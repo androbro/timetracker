@@ -19,7 +19,7 @@ export const timeRouter = createTRPCRouter({
 			},
 		});
 
-		return week;
+		return week || null;
 	}),
 
 	createWeek: publicProcedure

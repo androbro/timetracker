@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -19,7 +19,10 @@ interface TimeEntry {
 }
 
 interface WeeklyTimeEntryProps {
-	onTimeEntryChange?: (entries: Record<string, TimeEntry>) => void;
+	onTimeEntryChange?: (
+		entries: Record<string, TimeEntry>,
+		changedDay?: string
+	) => void;
 	initialEntries?: Partial<Record<string, Partial<TimeEntry>>>;
 	targetHours: number;
 }
@@ -49,32 +52,43 @@ export function WeeklyTimeEntry({
 		sunday: { hours: 0, isDayOff: true }
 	};
 
-	// Initialize entries with defaults and merge with initial entries
-	const initializedEntries: Record<string, TimeEntry> = { ...defaultDays };
+	// Function to merge initial entries with defaults
+	const mergeEntries = useCallback(() => {
+		// Start with default days
+		const merged = { ...defaultDays };
 
-	// Process initial entries and ensure all expected properties are present
-	for (const [day, entry] of Object.entries(initialEntries)) {
-		if (entry && day in defaultDays) {
-			// Safe to cast since we've checked day is in defaultDays
-			const dayKey = day as DayKey;
-			const defaultEntry = defaultDays[dayKey];
+		// Process initial entries and merge them
+		for (const [day, entry] of Object.entries(initialEntries)) {
+			if (entry && day in defaultDays) {
+				// Safe to cast since we've checked day is in defaultDays
+				const dayKey = day as DayKey;
+				const defaultEntry = defaultDays[dayKey];
 
-			initializedEntries[day] = {
-				// Provide default values if properties are not specified
-				hours:
-					typeof entry.hours === "number" ? entry.hours : defaultEntry.hours,
-				isDayOff:
-					typeof entry.isDayOff === "boolean"
-						? entry.isDayOff
-						: defaultEntry.isDayOff
-			};
+				merged[dayKey] = {
+					hours:
+						typeof entry.hours === "number" ? entry.hours : defaultEntry.hours,
+					isDayOff:
+						typeof entry.isDayOff === "boolean"
+							? entry.isDayOff
+							: defaultEntry.isDayOff
+				};
+			}
 		}
-	}
 
-	const [timeEntries, setTimeEntries] =
-		useState<Record<string, TimeEntry>>(initializedEntries);
+		return merged;
+	}, [initialEntries]);
+
+	const [timeEntries, setTimeEntries] = useState<Record<string, TimeEntry>>(
+		() => mergeEntries()
+	);
+
+	// Update timeEntries when initialEntries changes
+	useEffect(() => {
+		setTimeEntries(mergeEntries());
+	}, [mergeEntries]);
 
 	const handleHoursChange = (day: string, value: string) => {
+		// Parse the input as a float to support decimal hours (like 1.5 for 1h 30m)
 		const hours = Number.parseFloat(value) || 0;
 		const newEntries: Record<string, TimeEntry> = { ...timeEntries };
 
@@ -87,7 +101,7 @@ export function WeeklyTimeEntry({
 		}
 
 		setTimeEntries(newEntries);
-		onTimeEntryChange?.(newEntries);
+		onTimeEntryChange?.(newEntries, day);
 	};
 
 	const handleDayOffToggle = (day: string, isDayOff: boolean) => {
@@ -104,7 +118,7 @@ export function WeeklyTimeEntry({
 		}
 
 		setTimeEntries(newEntries);
-		onTimeEntryChange?.(newEntries);
+		onTimeEntryChange?.(newEntries, day);
 	};
 
 	const days = [

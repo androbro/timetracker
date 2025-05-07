@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
-import { Button } from "~/components/ui/button";
 import {
 	Select,
 	SelectContent,
@@ -19,12 +18,37 @@ interface TimeSettings {
 	breakDuration: number;
 }
 
+// Define the proper work week record structure
+interface WorkWeek {
+	id: number;
+	weekNumber: number;
+	year: number;
+	targetHours: number;
+	breakDuration: number;
+	createdAt: Date;
+	updatedAt: Date | null;
+	workDays: WorkDayRecord[];
+}
+
 // Define a type that helps us safely access possibly missing fields
 interface WorkDay {
 	date: Date;
 	totalHours: number;
 	isDayOff?: boolean;
 	isHoliday?: boolean;
+}
+
+// Add a new interface to define the database record type
+interface WorkDayRecord {
+	id: number;
+	weekId: number;
+	date: string | Date;
+	startTime: string;
+	endTime: string;
+	totalHours: number;
+	isDayOff: boolean;
+	createdAt?: string | Date;
+	updatedAt?: string | Date;
 }
 
 interface TimeEntry {
@@ -45,6 +69,44 @@ export function TimeTracker() {
 	const [startTime, setStartTime] = useState<string>("09:00");
 	const [endTime, setEndTime] = useState<string>("17:00");
 	const [timeEntries, setTimeEntries] = useState<Record<string, TimeEntry>>({});
+
+	// Helper function to get the first day (Sunday) of a specific week
+	const getFirstDayOfWeek = (year: number, weekNumber: number): Date => {
+		// Create a date for Jan 1 of the year
+		const januaryFirst = new Date(year, 0, 1);
+
+		// Calculate days to first Sunday of the year
+		const daysToFirstSunday = (7 - januaryFirst.getDay()) % 7;
+
+		// Calculate days to the Sunday of the target week
+		const daysToTargetSunday = daysToFirstSunday + (weekNumber - 1) * 7;
+
+		// Create and return the date
+		const firstDay = new Date(year, 0, 1 + daysToTargetSunday);
+		return firstDay;
+	};
+
+	// Helper function to get a consistent date for a day of the week
+	const getDateForDayInCurrentWeek = (day: string): Date => {
+		// Get the current date
+		const now = new Date();
+
+		// Get the current week number and year
+		const weekNumber = getWeekNumber(now);
+		const year = now.getFullYear();
+
+		// Calculate the first day of the current week (Sunday)
+		const firstDay = getFirstDayOfWeek(year, weekNumber);
+
+		// Add the appropriate number of days
+		const date = new Date(firstDay);
+		date.setDate(firstDay.getDate() + getDayNumber(day));
+
+		// Standardize the time to noon to avoid timezone issues
+		date.setHours(12, 0, 0, 0);
+
+		return date;
+	};
 
 	useEffect(() => {
 		if (currentWeek) {
@@ -92,7 +154,10 @@ export function TimeTracker() {
 		return totalMinutes / 60;
 	};
 
-	const handleTimeEntryChange = async (entries: Record<string, TimeEntry>) => {
+	const handleTimeEntryChange = async (
+		entries: Record<string, TimeEntry>,
+		changedDay?: string
+	) => {
 		setTimeEntries(entries);
 
 		if (!currentWeek) {
@@ -107,58 +172,154 @@ export function TimeTracker() {
 				breakDuration: settings.breakDuration
 			});
 
-			if (week[0]) {
-				// Update each day's hours
-				for (const [day, entry] of Object.entries(entries)) {
-					const date = new Date();
-					date.setDate(date.getDate() - (date.getDay() - getDayNumber(day)));
+			if (week && week.length > 0 && week[0]) {
+				// If it's a new week, we need to create all days
+				const daysToUpdate = changedDay ? [changedDay] : Object.keys(entries);
+				const weekId = week[0].id;
+
+				for (const day of daysToUpdate) {
+					if (!entries[day]) continue; // Skip if entry doesn't exist
+
+					// Create a date object for the current day of this week
+					const date = getDateForDayInCurrentWeek(day);
+
+					// Convert hours to minutes as integers for storage
+					const totalMinutes = Math.round(entries[day].hours * 60);
 
 					await updateDay.mutateAsync({
-						weekId: week[0].id,
+						weekId: weekId,
 						date,
 						startTime,
 						endTime,
-						totalHours: entry.hours * 60, // Convert hours to minutes
-						isDayOff: entry.isDayOff
+						totalHours: totalMinutes, // Store as minutes
+						isDayOff: entries[day].isDayOff
 					});
 				}
 			}
 		} else {
-			// Update each day's hours
-			for (const [day, entry] of Object.entries(entries)) {
-				const date = new Date();
-				date.setDate(date.getDate() - (date.getDay() - getDayNumber(day)));
+			// Only update the changed day if specified
+			const daysToUpdate = changedDay ? [changedDay] : Object.keys(entries);
 
-				await updateDay.mutateAsync({
-					weekId: currentWeek.id,
-					date,
-					startTime,
-					endTime,
-					totalHours: entry.hours * 60, // Convert hours to minutes
-					isDayOff: entry.isDayOff
-				});
+			for (const day of daysToUpdate) {
+				if (!entries[day]) continue; // Skip if entry doesn't exist
+
+				// Create a date object for the current day of this week
+				const date = getDateForDayInCurrentWeek(day);
+
+				// Convert hours to minutes as integers for storage
+				const totalMinutes = Math.round(entries[day].hours * 60);
+
+				try {
+					await updateDay.mutateAsync({
+						weekId: currentWeek.id,
+						date,
+						startTime,
+						endTime,
+						totalHours: totalMinutes, // Store as minutes
+						isDayOff: entries[day].isDayOff
+					});
+				} catch (error) {
+					console.error(`Error updating ${day}:`, error);
+					// Optionally retry once on error
+				}
 			}
 		}
 	};
 
-	const handleApplyTimeToWorkdays = () => {
+	const handleApplyTimeToWorkdays = async () => {
 		const calculatedHours = calculateHours(startTime, endTime);
 		if (calculatedHours <= 0) return;
 
 		const workdays = ["monday", "tuesday", "wednesday", "thursday", "friday"];
 		const newEntries = { ...timeEntries };
+		const changedDays: string[] = [];
 
 		for (const day of workdays) {
 			if (newEntries[day] && !newEntries[day].isDayOff) {
-				newEntries[day] = {
-					...newEntries[day],
-					hours: calculatedHours
-				};
+				// Only mark as changed if the hours are actually different
+				if (newEntries[day].hours !== calculatedHours) {
+					newEntries[day] = {
+						...newEntries[day],
+						hours: calculatedHours
+					};
+					changedDays.push(day);
+				}
 			}
 		}
 
+		// Update state immediately for UI responsiveness
 		setTimeEntries(newEntries);
-		handleTimeEntryChange(newEntries).catch(console.error);
+
+		// No days to update
+		if (changedDays.length === 0) return;
+
+		// If we don't have a current week, create it first
+		if (!currentWeek) {
+			const now = new Date();
+			const weekNumber = getWeekNumber(now);
+			const year = now.getFullYear();
+
+			const week = await createWeek.mutateAsync({
+				weekNumber,
+				year,
+				targetHours: settings.targetHours,
+				breakDuration: settings.breakDuration
+			});
+
+			if (week && week.length > 0 && week[0]) {
+				// Update days in parallel for better performance
+				const weekId = week[0].id;
+
+				await Promise.all(
+					changedDays.map(async (day) => {
+						const dayEntry = newEntries[day];
+						if (!dayEntry) return; // Skip if entry doesn't exist
+
+						const date = getDateForDayInCurrentWeek(day);
+						const totalMinutes = Math.round(dayEntry.hours * 60);
+
+						try {
+							await updateDay.mutateAsync({
+								weekId: weekId,
+								date,
+								startTime,
+								endTime,
+								totalHours: totalMinutes,
+								isDayOff: dayEntry.isDayOff
+							});
+						} catch (error) {
+							console.error(`Error updating ${day}:`, error);
+						}
+					})
+				);
+			}
+		} else {
+			// Update days in parallel for better performance
+			const weekId = currentWeek.id;
+
+			await Promise.all(
+				changedDays.map(async (day) => {
+					const dayEntry = newEntries[day];
+					if (!dayEntry) return; // Skip if entry doesn't exist
+
+					const date = getDateForDayInCurrentWeek(day);
+					const totalMinutes = Math.round(dayEntry.hours * 60);
+
+					try {
+						await updateDay.mutateAsync({
+							weekId: weekId,
+							date,
+							startTime,
+							endTime,
+							totalHours: totalMinutes,
+							isDayOff: dayEntry.isDayOff
+						});
+					} catch (error) {
+						console.error(`Error updating ${day}:`, error);
+					}
+				})
+			);
+		}
 	};
 
 	if (isLoading) {
@@ -211,46 +372,6 @@ export function TimeTracker() {
 									}))
 								}
 							/>
-						</div>
-					</CardContent>
-				</Card>
-
-				<Card>
-					<CardHeader>
-						<CardTitle>Time Calculator</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-4">
-						<div className="space-y-2">
-							<label htmlFor="start-time" className="text-sm font-medium">
-								Start Time
-							</label>
-							<Input
-								id="start-time"
-								type="time"
-								value={startTime}
-								onChange={(e) => setStartTime(e.target.value)}
-							/>
-						</div>
-
-						<div className="space-y-2">
-							<label htmlFor="end-time" className="text-sm font-medium">
-								End Time
-							</label>
-							<Input
-								id="end-time"
-								type="time"
-								value={endTime}
-								onChange={(e) => setEndTime(e.target.value)}
-							/>
-						</div>
-
-						<div className="pt-2 flex justify-between items-center">
-							<p className="text-lg">
-								Hours worked: {calculateHours(startTime, endTime).toFixed(2)}
-							</p>
-							<Button onClick={handleApplyTimeToWorkdays}>
-								Apply to Workdays
-							</Button>
 						</div>
 					</CardContent>
 				</Card>
