@@ -2,26 +2,57 @@
 // https://orm.drizzle.team/docs/sql-schema-declaration
 
 import { sql } from "drizzle-orm";
-import { index, pgTableCreator } from "drizzle-orm/pg-core";
+import { index, pgTableCreator, timestamp, integer, time } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 
 /**
- * This is an example of how to use the multi-project schema feature of Drizzle ORM. Use the same
+ * This is an example of how to use the multi-proj ect schema feature of Drizzle ORM. Use the same
  * database instance for multiple projects.
  *
  * @see https://orm.drizzle.team/docs/goodies#multi-project-schema
  */
 export const createTable = pgTableCreator((name) => `timetracker_${name}`);
 
-export const posts = createTable(
-	"post",
-	(d) => ({
-		id: d.integer().primaryKey().generatedByDefaultAsIdentity(),
-		name: d.varchar({ length: 256 }),
-		createdAt: d
-			.timestamp({ withTimezone: true })
-			.default(sql`CURRENT_TIMESTAMP`)
-			.notNull(),
-		updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+export const workWeeks = createTable(
+	"work_week",
+	(t) => ({
+		id: t.integer().primaryKey().generatedByDefaultAsIdentity(),
+		weekNumber: t.integer().notNull(),
+		year: t.integer().notNull(),
+		targetHours: t.integer().notNull(), // 40 or 32
+		breakDuration: t.integer().notNull(), // in minutes
+		createdAt: t.timestamp({ withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+		updatedAt: t.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
 	}),
-	(t) => [index("name_idx").on(t.name)],
+	(t) => [
+		index("week_year_idx").on(t.weekNumber, t.year),
+	],
 );
+
+export const workWeeksRelations = relations(workWeeks, ({ many }) => ({
+	workDays: many(workDays),
+}));
+
+export const workDays = createTable(
+	"work_day",
+	(t) => ({
+		id: t.integer().primaryKey().generatedByDefaultAsIdentity(),
+		weekId: t.integer().notNull().references(() => workWeeks.id),
+		date: t.timestamp({ withTimezone: true }).notNull(),
+		startTime: t.time().notNull(),
+		endTime: t.time().notNull(),
+		totalHours: t.integer().notNull(), // in minutes
+		createdAt: t.timestamp({ withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+		updatedAt: t.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+	}),
+	(t) => [
+		index("week_day_idx").on(t.weekId, t.date),
+	],
+);
+
+export const workDaysRelations = relations(workDays, ({ one }) => ({
+	week: one(workWeeks, {
+		fields: [workDays.weekId],
+		references: [workWeeks.id],
+	}),
+}));
