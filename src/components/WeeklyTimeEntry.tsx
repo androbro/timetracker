@@ -415,16 +415,25 @@ export function WeeklyTimeEntry({
 							</div>
 						</div>
 
-						{/* Day entries */}
-						<div className="space-y-5">
+						{/* Day entries - Horizontal layout */}
+						<div className="grid grid-cols-1 md:grid-cols-7 gap-4">
 							{DAYS.map(({ key, label }) => (
-								<div
-									key={key}
-									className="border-b pb-4 last:border-b-0 last:pb-0"
-								>
-									<div className="flex flex-wrap items-center justify-between mb-3">
-										<div className="flex items-center space-x-2">
+								<div key={key} className="border rounded-md p-3">
+									<div className="flex flex-col mb-3">
+										<div className="flex items-center justify-between mb-2">
 											<h3 className="font-semibold">{label}</h3>
+											<span
+												className={cn(
+													"text-sm font-semibold",
+													timeEntries[key]?.isDayOff
+														? "text-gray-400"
+														: "text-indigo-600 dark:text-indigo-400"
+												)}
+											>
+												{formatHours(timeEntries[key]?.hours || 0)}
+											</span>
+										</div>
+										<div className="flex items-center justify-between">
 											<div className="inline-flex items-center">
 												<Switch
 													id={`day-off-${key}`}
@@ -438,19 +447,6 @@ export function WeeklyTimeEntry({
 													Day Off
 												</Label>
 											</div>
-										</div>
-
-										<div className="flex items-center">
-											<span
-												className={cn(
-													"text-sm font-semibold mr-4",
-													timeEntries[key]?.isDayOff
-														? "text-gray-400"
-														: "text-indigo-600 dark:text-indigo-400"
-												)}
-											>
-												{formatHours(timeEntries[key]?.hours || 0)}
-											</span>
 											<TooltipProvider>
 												<Tooltip>
 													<TooltipTrigger asChild>
@@ -473,7 +469,7 @@ export function WeeklyTimeEntry({
 
 									<div
 										className={cn(
-											"grid grid-cols-1 sm:grid-cols-3 gap-3",
+											"flex flex-col gap-2",
 											timeEntries[key]?.isDayOff &&
 												"opacity-50 pointer-events-none"
 										)}
