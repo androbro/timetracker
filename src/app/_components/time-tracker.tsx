@@ -87,7 +87,8 @@ export function TimeTracker() {
 				defaultHours: 8
 			}
 		},
-		use24HourFormat: true
+		use24HourFormat: true,
+		showWeekends: true
 	};
 
 	const [settings, setSettings] = useState<TimeSettings>(defaultTimeSettings);
@@ -111,7 +112,8 @@ export function TimeTracker() {
 		if (userSettings) {
 			setSettings((prev) => ({
 				...prev,
-				use24HourFormat: userSettings.use24HourFormat
+				use24HourFormat: userSettings.use24HourFormat,
+				showWeekends: userSettings.showWeekends ?? true
 			}));
 		}
 	}, [userSettings]);
@@ -275,13 +277,15 @@ export function TimeTracker() {
 	const handleSettingsChange = (newSettings: TimeSettings) => {
 		setSettings(newSettings);
 
-		// If the time format has changed, update it in the database
+		// If the time format or showWeekends has changed, update it in the database
 		if (
 			userSettings &&
-			newSettings.use24HourFormat !== userSettings.use24HourFormat
+			(newSettings.use24HourFormat !== userSettings.use24HourFormat ||
+				newSettings.showWeekends !== userSettings.showWeekends)
 		) {
 			updateUserSettings.mutate({
-				use24HourFormat: newSettings.use24HourFormat
+				use24HourFormat: newSettings.use24HourFormat,
+				showWeekends: newSettings.showWeekends
 			});
 		}
 	};
@@ -335,6 +339,7 @@ export function TimeTracker() {
 						defaultDaySettings={settings.defaultDaySettings}
 						onDaySettingsChange={handleDaySettingsChange}
 						use24HourFormat={settings.use24HourFormat}
+						showWeekends={settings.showWeekends}
 					/>
 					<Settings
 						initialSettings={settings}

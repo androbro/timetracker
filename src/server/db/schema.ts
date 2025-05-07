@@ -81,6 +81,7 @@ export const userSettings = createTable(
 	(t) => ({
 		id: t.integer().primaryKey().generatedByDefaultAsIdentity(),
 		use24HourFormat: t.boolean().default(true).notNull(),
+		showWeekends: t.boolean().default(true).notNull(),
 		createdAt: t.timestamp({ withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 		updatedAt: t.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
 	})

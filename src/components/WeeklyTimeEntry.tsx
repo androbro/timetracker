@@ -33,7 +33,8 @@ export function WeeklyTimeEntry({
 	targetHours,
 	defaultDaySettings,
 	onDaySettingsChange,
-	use24HourFormat = true
+	use24HourFormat = true,
+	showWeekends = true
 }: WeeklyTimeEntryProps) {
 	const defaultDays: Record<DayKey, TimeEntry> = {
 		monday: {
@@ -355,6 +356,11 @@ export function WeeklyTimeEntry({
 	const hoursPercentage = (totalHours / targetHours) * 100;
 	const isOverTarget = totalHours > targetHours;
 
+	// Filter days based on showWeekends prop
+	const visibleDays = DAYS.filter(
+		({ key }) => showWeekends || (key !== "saturday" && key !== "sunday")
+	);
+
 	return (
 		<>
 			<Card className="mb-8">
@@ -416,8 +422,13 @@ export function WeeklyTimeEntry({
 						</div>
 
 						{/* Day entries - Horizontal layout */}
-						<div className="grid grid-cols-1 md:grid-cols-7 gap-4">
-							{DAYS.map(({ key, label }) => (
+						<div
+							className={cn(
+								"grid grid-cols-1 gap-4",
+								showWeekends ? "md:grid-cols-7" : "md:grid-cols-5"
+							)}
+						>
+							{visibleDays.map(({ key, label }) => (
 								<div key={key} className="border rounded-md p-3">
 									<div className="flex flex-col mb-3">
 										<div className="flex items-center justify-between mb-2">

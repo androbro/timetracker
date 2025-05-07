@@ -11,6 +11,7 @@ import {
 	SelectValue
 } from "./ui/select";
 import { Label } from "./ui/label";
+import { Switch } from "./ui/switch";
 
 export interface DaySettings {
 	defaultStartTime: string;
@@ -23,6 +24,7 @@ export interface TimeSettings {
 	breakDuration: number;
 	defaultDaySettings: Record<string, DaySettings>;
 	use24HourFormat: boolean;
+	showWeekends: boolean;
 }
 
 interface SettingsProps {
@@ -100,6 +102,24 @@ export function Settings({ initialSettings, onSettingsChange }: SettingsProps) {
 							<SelectItem value="12h">12-hour format (2:00 PM)</SelectItem>
 						</SelectContent>
 					</Select>
+				</div>
+
+				<div className="space-y-2">
+					<div className="flex items-center space-x-2">
+						<Switch
+							id="show-weekends"
+							checked={settings.showWeekends}
+							onCheckedChange={(checked) =>
+								handleSettingChange("showWeekends", checked)
+							}
+						/>
+						<Label
+							htmlFor="show-weekends"
+							className="text-sm font-medium cursor-pointer"
+						>
+							Show Weekends by Default
+						</Label>
+					</div>
 				</div>
 			</CardContent>
 		</Card>

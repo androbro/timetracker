@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+when doing a database change, use drizzle to update the db with npm run db:push   

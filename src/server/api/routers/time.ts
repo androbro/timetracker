@@ -143,6 +143,7 @@ export const timeRouter = createTRPCRouter({
 	updateUserSettings: publicProcedure
 		.input(z.object({
 			use24HourFormat: z.boolean(),
+			showWeekends: z.boolean().optional(),
 		}))
 		.mutation(async ({ ctx, input }) => {
 			const existingSettings = await ctx.db.query.userSettings.findFirst();
