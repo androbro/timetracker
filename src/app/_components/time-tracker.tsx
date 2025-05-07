@@ -328,6 +328,11 @@ export function TimeTracker() {
 
 	return (
 		<div className="grid gap-6">
+			<WeeklyTimeEntry
+				initialEntries={timeEntries}
+				onTimeEntryChange={handleTimeEntryChange}
+				targetHours={settings.targetHours}
+			/>
 			<div className="grid gap-6 md:grid-cols-2">
 				<Card>
 					<CardHeader>
@@ -376,12 +381,6 @@ export function TimeTracker() {
 					</CardContent>
 				</Card>
 			</div>
-
-			<WeeklyTimeEntry
-				initialEntries={timeEntries}
-				onTimeEntryChange={handleTimeEntryChange}
-				targetHours={settings.targetHours}
-			/>
 		</div>
 	);
 }
