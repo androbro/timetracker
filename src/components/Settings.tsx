@@ -12,6 +12,10 @@ import {
 } from "./ui/select";
 import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
+import { Button } from "./ui/button";
+import { AlertTriangle } from "lucide-react";
+import { api } from "~/trpc/react";
+import { toast } from "sonner";
 
 export interface DaySettings {
 	defaultStartTime: string;
@@ -41,6 +45,18 @@ export function Settings({
 	onOpenChange
 }: SettingsProps) {
 	const [settings, setSettings] = useState<TimeSettings>(initialSettings);
+	const [deleteConfirm, setDeleteConfirm] = useState("");
+	const deleteDataMutation = api.time.deleteAllUserData.useMutation({
+		onSuccess: () => {
+			toast.success("All your data has been deleted");
+			setDeleteConfirm("");
+			// Close the dialog after successful deletion
+			onOpenChange(false);
+		},
+		onError: (error) => {
+			toast.error(`Error deleting data: ${error.message}`);
+		}
+	});
 
 	const handleSettingChange = <K extends keyof TimeSettings>(
 		key: K,
@@ -49,6 +65,14 @@ export function Settings({
 		const newSettings = { ...settings, [key]: value };
 		setSettings(newSettings);
 		onSettingsChange(newSettings);
+	};
+
+	const handleDeleteData = () => {
+		if (deleteConfirm === "delete") {
+			deleteDataMutation.mutate();
+		} else {
+			toast.error("Please type 'delete' to confirm");
+		}
 	};
 
 	return (
@@ -127,6 +151,55 @@ export function Settings({
 							>
 								Show Weekends by Default
 							</Label>
+						</div>
+					</div>
+
+					<div className="mt-8 pt-4 border-t">
+						<div className="space-y-4">
+							<div className="flex items-center gap-2">
+								<AlertTriangle className="h-5 w-5 text-red-500" />
+								<h3 className="text-base font-semibold text-red-500">
+									Danger Zone
+								</h3>
+							</div>
+
+							<div className="rounded-md border border-red-200 bg-red-50 p-4">
+								<p className="text-sm font-medium text-red-800 mb-2">
+									Delete all your data
+								</p>
+								<p className="text-xs text-red-700 mb-4">
+									This action is irreversible. All your time entries, work
+									weeks, and custom settings will be permanently deleted.
+								</p>
+
+								<div className="flex flex-col gap-2">
+									<Label
+										htmlFor="delete-confirm"
+										className="text-xs font-medium text-red-700"
+									>
+										Type 'delete' to confirm
+									</Label>
+									<div className="flex gap-2">
+										<Input
+											id="delete-confirm"
+											value={deleteConfirm}
+											onChange={(e) => setDeleteConfirm(e.target.value)}
+											className="border-red-300 focus:border-red-500 focus:ring-red-500"
+											placeholder="Type 'delete'"
+										/>
+										<Button
+											onClick={handleDeleteData}
+											variant="destructive"
+											disabled={
+												deleteConfirm !== "delete" ||
+												deleteDataMutation.isPending
+											}
+										>
+											{deleteDataMutation.isPending ? "Deleting..." : "Delete"}
+										</Button>
+									</div>
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>

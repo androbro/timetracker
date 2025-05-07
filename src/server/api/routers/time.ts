@@ -161,6 +161,32 @@ export const timeRouter = createTRPCRouter({
 				.values(input)
 				.returning();
 		}),
+
+	deleteAllUserData: publicProcedure
+		.mutation(async ({ ctx }) => {
+			// Delete all work days
+			await ctx.db.delete(workDays);
+
+			// Delete all work weeks
+			await ctx.db.delete(workWeeks);
+
+			// Reset day settings to defaults
+			await ctx.db.delete(daySettings);
+
+			// Reset user settings to defaults (we don't delete completely to avoid having to recreate them)
+			const existingSettings = await ctx.db.query.userSettings.findFirst();
+			if (existingSettings) {
+				await ctx.db
+					.update(userSettings)
+					.set({
+						use24HourFormat: true,
+						showWeekends: false
+					})
+					.where(eq(userSettings.id, existingSettings.id));
+			}
+
+			return { success: true };
+		}),
 });
 
 function getWeekNumber(date: Date): number {
