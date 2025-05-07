@@ -450,6 +450,13 @@ export function WeeklyTimeEntry({
 										</Dialog>
 									</div>
 
+									{!isDisabled && daySettings && (
+										<div className="text-xs text-gray-500 dark:text-gray-400 w-full text-center">
+											{daySettings.defaultStartTime} -{" "}
+											{daySettings.defaultEndTime}
+										</div>
+									)}
+
 									<Input
 										id={`${key}-hours`}
 										type="number"
