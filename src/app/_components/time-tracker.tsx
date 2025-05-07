@@ -2,23 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { Input } from "~/components/ui/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue
-} from "~/components/ui/select";
 import { api } from "~/trpc/react";
 import { WeeklyTimeEntry } from "~/components/WeeklyTimeEntry";
+import {
+	Settings,
+	type TimeSettings,
+	type DaySettings
+} from "~/components/Settings";
 
-interface TimeSettings {
-	targetHours: number;
-	breakDuration: number;
-}
-
-// Define the proper work week record structure
 interface WorkWeek {
 	id: number;
 	weekNumber: number;
@@ -61,13 +52,40 @@ export function TimeTracker() {
 	const createWeek = api.time.createWeek.useMutation();
 	const updateDay = api.time.updateDay.useMutation();
 
-	const [settings, setSettings] = useState<TimeSettings>({
+	// Default settings with day-specific defaults
+	const defaultTimeSettings: TimeSettings = {
 		targetHours: 40,
-		breakDuration: 30
-	});
+		breakDuration: 30,
+		defaultDaySettings: {
+			monday: {
+				defaultStartTime: "09:00",
+				defaultEndTime: "17:00",
+				defaultHours: 8
+			},
+			tuesday: {
+				defaultStartTime: "09:00",
+				defaultEndTime: "17:00",
+				defaultHours: 8
+			},
+			wednesday: {
+				defaultStartTime: "09:00",
+				defaultEndTime: "17:00",
+				defaultHours: 8
+			},
+			thursday: {
+				defaultStartTime: "09:00",
+				defaultEndTime: "17:00",
+				defaultHours: 8
+			},
+			friday: {
+				defaultStartTime: "09:00",
+				defaultEndTime: "17:00",
+				defaultHours: 8
+			}
+		}
+	};
 
-	const [startTime, setStartTime] = useState<string>("09:00");
-	const [endTime, setEndTime] = useState<string>("17:00");
+	const [settings, setSettings] = useState<TimeSettings>(defaultTimeSettings);
 	const [timeEntries, setTimeEntries] = useState<Record<string, TimeEntry>>({});
 
 	// Helper function to get the first day (Sunday) of a specific week
@@ -110,10 +128,13 @@ export function TimeTracker() {
 
 	useEffect(() => {
 		if (currentWeek) {
-			setSettings({
+			// Update settings from database
+			setSettings((prev) => ({
+				...prev,
 				targetHours: currentWeek.targetHours,
 				breakDuration: currentWeek.breakDuration
-			});
+			}));
+
 			// Convert current week data to time entries format
 			const entries: Record<string, TimeEntry> = {};
 			for (const day of currentWeek.workDays) {
@@ -133,26 +154,6 @@ export function TimeTracker() {
 			setTimeEntries(entries);
 		}
 	}, [currentWeek]);
-
-	const calculateHours = (start: string, end: string) => {
-		const [startHoursStr, startMinutesStr] = start.split(":");
-		const [endHoursStr, endMinutesStr] = end.split(":");
-
-		if (!startHoursStr || !startMinutesStr || !endHoursStr || !endMinutesStr) {
-			return 0;
-		}
-
-		const startHours = Number.parseInt(startHoursStr, 10);
-		const startMinutes = Number.parseInt(startMinutesStr, 10);
-		const endHours = Number.parseInt(endHoursStr, 10);
-		const endMinutes = Number.parseInt(endMinutesStr, 10);
-
-		let totalMinutes =
-			endHours * 60 + endMinutes - (startHours * 60 + startMinutes);
-		totalMinutes -= settings.breakDuration;
-
-		return totalMinutes / 60;
-	};
 
 	const handleTimeEntryChange = async (
 		entries: Record<string, TimeEntry>,
@@ -183,6 +184,11 @@ export function TimeTracker() {
 					// Create a date object for the current day of this week
 					const date = getDateForDayInCurrentWeek(day);
 
+					// Get default start/end times from settings
+					const daySettings = settings.defaultDaySettings[day];
+					const startTime = daySettings?.defaultStartTime || "09:00";
+					const endTime = daySettings?.defaultEndTime || "17:00";
+
 					// Convert hours to minutes as integers for storage
 					const totalMinutes = Math.round(entries[day].hours * 60);
 
@@ -206,6 +212,18 @@ export function TimeTracker() {
 				// Create a date object for the current day of this week
 				const date = getDateForDayInCurrentWeek(day);
 
+				// Find the existing day record to get current start/end times
+				const existingDay = currentWeek.workDays.find(
+					(d) => new Date(d.date).toDateString() === date.toDateString()
+				);
+
+				// Use existing times or default times from settings
+				const daySettings = settings.defaultDaySettings[day];
+				const startTime =
+					existingDay?.startTime || daySettings?.defaultStartTime || "09:00";
+				const endTime =
+					existingDay?.endTime || daySettings?.defaultEndTime || "17:00";
+
 				// Convert hours to minutes as integers for storage
 				const totalMinutes = Math.round(entries[day].hours * 60);
 
@@ -226,100 +244,18 @@ export function TimeTracker() {
 		}
 	};
 
-	const handleApplyTimeToWorkdays = async () => {
-		const calculatedHours = calculateHours(startTime, endTime);
-		if (calculatedHours <= 0) return;
+	const handleSettingsChange = (newSettings: TimeSettings) => {
+		setSettings(newSettings);
+	};
 
-		const workdays = ["monday", "tuesday", "wednesday", "thursday", "friday"];
-		const newEntries = { ...timeEntries };
-		const changedDays: string[] = [];
-
-		for (const day of workdays) {
-			if (newEntries[day] && !newEntries[day].isDayOff) {
-				// Only mark as changed if the hours are actually different
-				if (newEntries[day].hours !== calculatedHours) {
-					newEntries[day] = {
-						...newEntries[day],
-						hours: calculatedHours
-					};
-					changedDays.push(day);
-				}
+	const handleDaySettingsChange = (day: string, daySettings: DaySettings) => {
+		setSettings((prev) => ({
+			...prev,
+			defaultDaySettings: {
+				...prev.defaultDaySettings,
+				[day]: daySettings
 			}
-		}
-
-		// Update state immediately for UI responsiveness
-		setTimeEntries(newEntries);
-
-		// No days to update
-		if (changedDays.length === 0) return;
-
-		// If we don't have a current week, create it first
-		if (!currentWeek) {
-			const now = new Date();
-			const weekNumber = getWeekNumber(now);
-			const year = now.getFullYear();
-
-			const week = await createWeek.mutateAsync({
-				weekNumber,
-				year,
-				targetHours: settings.targetHours,
-				breakDuration: settings.breakDuration
-			});
-
-			if (week && week.length > 0 && week[0]) {
-				// Update days in parallel for better performance
-				const weekId = week[0].id;
-
-				await Promise.all(
-					changedDays.map(async (day) => {
-						const dayEntry = newEntries[day];
-						if (!dayEntry) return; // Skip if entry doesn't exist
-
-						const date = getDateForDayInCurrentWeek(day);
-						const totalMinutes = Math.round(dayEntry.hours * 60);
-
-						try {
-							await updateDay.mutateAsync({
-								weekId: weekId,
-								date,
-								startTime,
-								endTime,
-								totalHours: totalMinutes,
-								isDayOff: dayEntry.isDayOff
-							});
-						} catch (error) {
-							console.error(`Error updating ${day}:`, error);
-						}
-					})
-				);
-			}
-		} else {
-			// Update days in parallel for better performance
-			const weekId = currentWeek.id;
-
-			await Promise.all(
-				changedDays.map(async (day) => {
-					const dayEntry = newEntries[day];
-					if (!dayEntry) return; // Skip if entry doesn't exist
-
-					const date = getDateForDayInCurrentWeek(day);
-					const totalMinutes = Math.round(dayEntry.hours * 60);
-
-					try {
-						await updateDay.mutateAsync({
-							weekId: weekId,
-							date,
-							startTime,
-							endTime,
-							totalHours: totalMinutes,
-							isDayOff: dayEntry.isDayOff
-						});
-					} catch (error) {
-						console.error(`Error updating ${day}:`, error);
-					}
-				})
-			);
-		}
+		}));
 	};
 
 	if (isLoading) {
@@ -332,55 +268,13 @@ export function TimeTracker() {
 				initialEntries={timeEntries}
 				onTimeEntryChange={handleTimeEntryChange}
 				targetHours={settings.targetHours}
+				defaultDaySettings={settings.defaultDaySettings}
+				onDaySettingsChange={handleDaySettingsChange}
 			/>
-			<div className="grid gap-6 md:grid-cols-2">
-				<Card>
-					<CardHeader>
-						<CardTitle>Settings</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-4">
-						<div className="space-y-2">
-							<label htmlFor="weekly-hours" className="text-sm font-medium">
-								Weekly Hours
-							</label>
-							<Select
-								value={settings.targetHours.toString()}
-								onValueChange={(value) =>
-									setSettings((prev) => ({
-										...prev,
-										targetHours: Number(value)
-									}))
-								}
-							>
-								<SelectTrigger id="weekly-hours">
-									<SelectValue placeholder="Select weekly hours" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="40">40 hours (5 days)</SelectItem>
-									<SelectItem value="32">32 hours (4 days)</SelectItem>
-								</SelectContent>
-							</Select>
-						</div>
-
-						<div className="space-y-2">
-							<label htmlFor="break-duration" className="text-sm font-medium">
-								Break Duration (minutes)
-							</label>
-							<Input
-								id="break-duration"
-								type="number"
-								value={settings.breakDuration}
-								onChange={(e) =>
-									setSettings((prev) => ({
-										...prev,
-										breakDuration: Number(e.target.value)
-									}))
-								}
-							/>
-						</div>
-					</CardContent>
-				</Card>
-			</div>
+			<Settings
+				initialSettings={settings}
+				onSettingsChange={handleSettingsChange}
+			/>
 		</div>
 	);
 }
