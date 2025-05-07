@@ -119,7 +119,7 @@ export const TimeInput = ({
 						type="button"
 						onClick={toggleAmPm}
 						className={cn(
-							"min-w-[40px] h-9 px-2 text-xs font-medium rounded-md flex items-center justify-center",
+							"min-w-[40px] h-9 px-2 text-xs font-medium rounded-md flex items-center justify-center cursor-pointer",
 							"border border-input border-l-0 rounded-l-none",
 							isPM
 								? "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200"
