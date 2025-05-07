@@ -22,6 +22,7 @@ export interface TimeSettings {
 	targetHours: number;
 	breakDuration: number;
 	defaultDaySettings: Record<string, DaySettings>;
+	use24HourFormat: boolean;
 }
 
 interface SettingsProps {
@@ -79,6 +80,26 @@ export function Settings({ initialSettings, onSettingsChange }: SettingsProps) {
 							handleSettingChange("breakDuration", Number(e.target.value))
 						}
 					/>
+				</div>
+
+				<div className="space-y-2">
+					<Label htmlFor="time-format" className="text-sm font-medium">
+						Time Format
+					</Label>
+					<Select
+						value={settings.use24HourFormat ? "24h" : "12h"}
+						onValueChange={(value) =>
+							handleSettingChange("use24HourFormat", value === "24h")
+						}
+					>
+						<SelectTrigger id="time-format">
+							<SelectValue placeholder="Select time format" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="24h">24-hour format (14:00)</SelectItem>
+							<SelectItem value="12h">12-hour format (2:00 PM)</SelectItem>
+						</SelectContent>
+					</Select>
 				</div>
 			</CardContent>
 		</Card>

@@ -13,50 +13,27 @@ import {
 } from "~/components/ui/tooltip";
 import { Info, Settings as SettingsIcon, Clock } from "lucide-react";
 import { Button } from "./ui/button";
+import { cn } from "~/lib/utils";
 import type { DaySettings } from "./Settings";
+
+// Import extracted components and utilities
+import { TimeInput } from "./TimeInput";
+import { DaySettingsDialog } from "./DaySettingsDialog";
+import { calculateHours, formatHours } from "./utils/timeUtils";
 import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger
-} from "~/components/ui/dialog";
-
-interface TimeEntry {
-	hours: number;
-	isDayOff: boolean;
-	startTime: string;
-	endTime: string;
-	lunchBreakHours: number;
-}
-
-interface WeeklyTimeEntryProps {
-	onTimeEntryChange?: (
-		entries: Record<string, TimeEntry>,
-		changedDay?: string
-	) => void;
-	initialEntries?: Partial<Record<string, Partial<TimeEntry>>>;
-	targetHours: number;
-	defaultDaySettings: Record<string, DaySettings>;
-	onDaySettingsChange?: (day: string, settings: DaySettings) => void;
-}
-
-// Define day keys type for better type safety
-type DayKey =
-	| "monday"
-	| "tuesday"
-	| "wednesday"
-	| "thursday"
-	| "friday"
-	| "saturday"
-	| "sunday";
+	type TimeEntry,
+	type WeeklyTimeEntryProps,
+	type DayKey,
+	DAYS
+} from "./types/timeEntryTypes";
 
 export function WeeklyTimeEntry({
 	onTimeEntryChange,
 	initialEntries = {},
 	targetHours,
 	defaultDaySettings,
-	onDaySettingsChange
+	onDaySettingsChange,
+	use24HourFormat = true
 }: WeeklyTimeEntryProps) {
 	const defaultDays: Record<DayKey, TimeEntry> = {
 		monday: {
@@ -112,9 +89,6 @@ export function WeeklyTimeEntry({
 
 	// State for editing day settings
 	const [editingDay, setEditingDay] = useState<string | null>(null);
-	const [tempDaySettings, setTempDaySettings] = useState<DaySettings | null>(
-		null
-	);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 
 	// Function to merge initial entries with defaults and apply day settings
@@ -161,45 +135,6 @@ export function WeeklyTimeEntry({
 
 		return merged;
 	}, [initialEntries, defaultDaySettings]);
-
-	// Calculate hours based on start time, end time, and lunch break
-	const calculateHours = (
-		startTime: string,
-		endTime: string,
-		lunchBreakHours: number
-	) => {
-		if (!startTime || !endTime) return 0;
-
-		const startParts = startTime.split(":").map(Number);
-		const endParts = endTime.split(":").map(Number);
-
-		if (startParts.length < 2 || endParts.length < 2) return 0;
-
-		const startHour = startParts[0] || 0;
-		const startMinute = startParts[1] || 0;
-		const endHour = endParts[0] || 0;
-		const endMinute = endParts[1] || 0;
-
-		const startMinutes = startHour * 60 + startMinute;
-		const endMinutes = endHour * 60 + endMinute;
-
-		// Calculate total work minutes and subtract lunch break
-		const workMinutes = endMinutes - startMinutes - lunchBreakHours * 60;
-
-		// Convert back to hours with decimal
-		return Math.max(0, workMinutes / 60);
-	};
-
-	// Format hours to display in a more readable way (e.g., 7h 30m)
-	const formatHours = (hours: number) => {
-		const wholeHours = Math.floor(hours);
-		const minutes = Math.round((hours - wholeHours) * 60);
-
-		if (minutes === 0) {
-			return `${wholeHours}h`;
-		}
-		return `${wholeHours}h ${minutes}m`;
-	};
 
 	const [timeEntries, setTimeEntries] = useState<Record<string, TimeEntry>>(
 		() => mergeEntries()
@@ -287,21 +222,11 @@ export function WeeklyTimeEntry({
 		onTimeEntryChange?.(newEntries, day);
 	};
 
-	const days = [
-		{ key: "monday", label: "Monday" },
-		{ key: "tuesday", label: "Tuesday" },
-		{ key: "wednesday", label: "Wednesday" },
-		{ key: "thursday", label: "Thursday" },
-		{ key: "friday", label: "Friday" },
-		{ key: "saturday", label: "Saturday" },
-		{ key: "sunday", label: "Sunday" }
-	] as const;
-
 	// Apply default hours for all workdays based on settings
 	const applyDefaultHours = () => {
 		const newEntries = { ...timeEntries };
 
-		for (const { key } of days) {
+		for (const { key } of DAYS) {
 			// Skip days off
 			if (newEntries[key]?.isDayOff) {
 				continue;
@@ -358,348 +283,274 @@ export function WeeklyTimeEntry({
 			return; // No workdays to distribute hours to
 		}
 
-		// Calculate hours to add per day
+		// Distribute remaining hours evenly among workdays
 		const hoursPerDay = remainingHours / workdayCount;
-
-		// Create new entries with adjusted hours
 		const newEntries = { ...timeEntries };
-		for (const day of Object.keys(newEntries)) {
-			if (newEntries[day] && !newEntries[day].isDayOff) {
-				newEntries[day] = {
-					...newEntries[day],
-					hours: newEntries[day].hours + hoursPerDay,
-					isDayOff: newEntries[day].isDayOff
-				};
-			}
+
+		// For each workday, adjust end time to add the required hours
+		for (const [day, entry] of Object.entries(newEntries)) {
+			if (entry.isDayOff) continue;
+
+			// Calculate new end time by adding hoursPerDay
+			const startParts = entry.startTime.split(":").map(Number);
+			const startHour = startParts[0] || 0;
+			const startMinute = startParts[1] || 0;
+
+			// Convert start time to minutes, add work time and lunch break
+			const startTimeInMinutes = startHour * 60 + startMinute;
+			const workTimeInMinutes = (entry.hours + hoursPerDay) * 60;
+			const lunchBreakInMinutes = entry.lunchBreakHours * 60;
+
+			// Calculate new end time in minutes
+			const endTimeInMinutes =
+				startTimeInMinutes + workTimeInMinutes + lunchBreakInMinutes;
+
+			// Convert back to hours and minutes
+			const endHours = Math.floor(endTimeInMinutes / 60);
+			const endMinutes = Math.round(endTimeInMinutes % 60);
+
+			// Format as HH:MM
+			const newEndTime = `${endHours.toString().padStart(2, "0")}:${endMinutes
+				.toString()
+				.padStart(2, "0")}`;
+
+			// Update the entry
+			entry.endTime = newEndTime;
+			entry.hours = calculateHours(
+				entry.startTime,
+				entry.endTime,
+				entry.lunchBreakHours
+			);
 		}
 
 		setTimeEntries(newEntries);
 		onTimeEntryChange?.(newEntries);
 	};
 
-	// Handle day settings changes
-	const handleDaySettingChange = (
-		field: keyof DaySettings,
-		value: string | number
-	) => {
-		if (!editingDay || !tempDaySettings) return;
-
-		setTempDaySettings({
-			...tempDaySettings,
-			[field]: value
-		});
-	};
-
-	// Save day settings changes
-	const saveDaySettings = () => {
-		if (!editingDay || !tempDaySettings || !onDaySettingsChange) return;
-
-		// Ensure all properties are properly defined before saving
-		const safeSettings: DaySettings = {
-			defaultStartTime: tempDaySettings.defaultStartTime || "09:00",
-			defaultEndTime: tempDaySettings.defaultEndTime || "17:00",
-			defaultHours: tempDaySettings.defaultHours ?? 8
-		};
-
-		onDaySettingsChange(editingDay, safeSettings);
-		setIsDialogOpen(false);
-		setEditingDay(null);
-		setTempDaySettings(null);
-	};
-
 	// Open day settings dialog
 	const openDaySettings = (day: string) => {
-		// Create a fully defined default settings object
-		const defaultSettings: DaySettings = {
-			defaultStartTime: "09:00",
-			defaultEndTime: "17:00",
-			defaultHours: 8
-		};
-
-		// Get existing settings or use defaults
-		const settings = defaultDaySettings[day] || defaultSettings;
-
-		// Make sure all fields are defined, even if the original object had undefined values
-		const fullSettings: DaySettings = {
-			defaultStartTime:
-				settings.defaultStartTime || defaultSettings.defaultStartTime,
-			defaultEndTime: settings.defaultEndTime || defaultSettings.defaultEndTime,
-			defaultHours: settings.defaultHours ?? defaultSettings.defaultHours
-		};
-
 		setEditingDay(day);
-		setTempDaySettings(fullSettings);
 		setIsDialogOpen(true);
 	};
 
-	// Calculate total hours worked and remaining hours
-	const totalHoursWorked = Object.values(timeEntries).reduce(
-		(sum, entry) => (entry.isDayOff ? sum : sum + entry.hours),
+	// Save day settings
+	const saveDaySettings = (settings: DaySettings) => {
+		if (editingDay && settings) {
+			onDaySettingsChange?.(editingDay, settings);
+			setIsDialogOpen(false);
+			setEditingDay(null);
+		}
+	};
+
+	// Calculate total hours
+	const totalHours = Object.values(timeEntries).reduce(
+		(sum, entry) => sum + entry.hours,
 		0
 	);
-	const remainingHours = targetHours - totalHoursWorked;
+
+	// Format for target vs. actual hours display
+	const hoursDisplay = `${formatHours(totalHours)} / ${formatHours(
+		targetHours
+	)}`;
+	const hoursPercentage = (totalHours / targetHours) * 100;
+	const isOverTarget = totalHours > targetHours;
 
 	return (
 		<>
-			<Card>
-				<CardHeader>
-					<CardTitle className="flex justify-between items-center">
-						<span>Weekly Time Entries</span>
-						<div className="flex gap-2 items-center">
-							<div className="text-lg flex gap-4 items-center">
-								<span className="text-sm font-normal">
-									Total: {formatHours(totalHoursWorked)}
-								</span>
-								<span
-									className={`text-sm font-normal ${
-										remainingHours < 0
-											? "text-red-500"
-											: remainingHours === 0
-											? "text-green-500"
-											: ""
-									}`}
-								>
-									Remaining: {formatHours(Math.abs(remainingHours))}
-								</span>
-							</div>
-							<div className="flex gap-2">
-								<TooltipProvider>
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<Button
-												variant="outline"
-												size="icon"
-												onClick={applyDefaultHours}
-											>
-												<Clock className="h-4 w-4" />
-											</Button>
-										</TooltipTrigger>
-										<TooltipContent>
-											<p>Apply default times to workdays</p>
-										</TooltipContent>
-									</Tooltip>
-								</TooltipProvider>
-								<TooltipProvider>
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<Button
-												variant="outline"
-												size="icon"
-												onClick={fillTargetHours}
-											>
-												<Clock className="h-4 w-4 font-bold" />
-											</Button>
-										</TooltipTrigger>
-										<TooltipContent>
-											<p>
-												Fill remaining hours to meet target ({targetHours} hrs)
-											</p>
-										</TooltipContent>
-									</Tooltip>
-								</TooltipProvider>
-							</div>
+			<Card className="mb-8">
+				<CardHeader className="pb-2">
+					<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between">
+						<CardTitle className="text-xl mb-2 sm:mb-0">Weekly Hours</CardTitle>
+						<div className="flex space-x-2">
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={applyDefaultHours}
+								className="h-8 text-xs"
+							>
+								Apply Default Hours
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={fillTargetHours}
+								className="h-8 text-xs"
+							>
+								Fill Target Hours
+							</Button>
 						</div>
-					</CardTitle>
+					</div>
 				</CardHeader>
 				<CardContent>
-					<div className="grid grid-cols-7 gap-4">
-						{days.map(({ key, label }) => {
-							const entry = timeEntries[key];
-							const isDisabled = entry?.isDayOff;
-							const daySettings = defaultDaySettings[key];
+					<div className="space-y-6">
+						{/* Target hours display */}
+						<div className="flex flex-col">
+							<div className="flex justify-between mb-1">
+								<span className="text-sm font-medium">Target vs. Actual</span>
+								<span
+									className={cn(
+										"text-sm",
+										isOverTarget ? "text-green-600" : "text-gray-600"
+									)}
+								>
+									{hoursDisplay}
+								</span>
+							</div>
+							<div className="w-full bg-gray-200 rounded-full h-2.5 mb-4 dark:bg-gray-700">
+								<div
+									className={cn(
+										"h-2.5 rounded-full",
+										isOverTarget
+											? "bg-green-600"
+											: hoursPercentage >= 100
+											? "bg-green-600"
+											: hoursPercentage >= 90
+											? "bg-yellow-400"
+											: "bg-indigo-600"
+									)}
+									style={{
+										width: `${Math.min(hoursPercentage, 100)}%`
+									}}
+								/>
+							</div>
+						</div>
 
-							return (
+						{/* Day entries */}
+						<div className="space-y-5">
+							{DAYS.map(({ key, label }) => (
 								<div
 									key={key}
-									className={`flex flex-col items-center space-y-2 p-3 rounded-md ${
-										isDisabled ? "bg-gray-100 dark:bg-gray-800" : ""
-									}`}
+									className="border-b pb-4 last:border-b-0 last:pb-0"
 								>
-									<div className="flex justify-between items-center w-full">
-										<Label htmlFor={`${key}-hours`}>{label}</Label>
-										<Dialog
-											open={isDialogOpen && editingDay === key}
-											onOpenChange={(open) => {
-												setIsDialogOpen(open);
-												if (!open) {
-													setEditingDay(null);
-													setTempDaySettings(null);
-												}
-											}}
-										>
-											<DialogTrigger asChild>
-												<Button
-													variant="ghost"
-													size="icon"
-													className="h-6 w-6"
-													onClick={() => openDaySettings(key)}
-												>
-													<SettingsIcon className="h-3.5 w-3.5" />
-												</Button>
-											</DialogTrigger>
-											<DialogContent>
-												<DialogHeader>
-													<DialogTitle>Settings for {label}</DialogTitle>
-												</DialogHeader>
-												{tempDaySettings && (
-													<div className="space-y-4 py-4">
-														<div className="grid grid-cols-2 gap-4">
-															<div className="space-y-2">
-																<Label htmlFor={`${key}-default-start`}>
-																	Default Start Time
-																</Label>
-																<Input
-																	id={`${key}-default-start`}
-																	type="time"
-																	value={tempDaySettings.defaultStartTime}
-																	onChange={(e) =>
-																		handleDaySettingChange(
-																			"defaultStartTime",
-																			e.target.value
-																		)
-																	}
-																/>
-															</div>
-															<div className="space-y-2">
-																<Label htmlFor={`${key}-default-end`}>
-																	Default End Time
-																</Label>
-																<Input
-																	id={`${key}-default-end`}
-																	type="time"
-																	value={tempDaySettings.defaultEndTime}
-																	onChange={(e) =>
-																		handleDaySettingChange(
-																			"defaultEndTime",
-																			e.target.value
-																		)
-																	}
-																/>
-															</div>
-														</div>
-														<div className="space-y-2">
-															<Label htmlFor={`${key}-default-hours`}>
-																Default Hours
-															</Label>
-															<Input
-																id={`${key}-default-hours`}
-																type="number"
-																min="0"
-																max="24"
-																step="0.25"
-																value={tempDaySettings.defaultHours}
-																onChange={(e) =>
-																	handleDaySettingChange(
-																		"defaultHours",
-																		Number(e.target.value)
-																	)
-																}
-															/>
-														</div>
-														<div className="flex justify-end">
-															<Button onClick={saveDaySettings}>Save</Button>
-														</div>
-													</div>
+									<div className="flex flex-wrap items-center justify-between mb-3">
+										<div className="flex items-center space-x-2">
+											<h3 className="font-semibold">{label}</h3>
+											<div className="inline-flex items-center">
+												<Switch
+													id={`day-off-${key}`}
+													checked={timeEntries[key]?.isDayOff || false}
+													onCheckedChange={(checked) =>
+														handleDayOffToggle(key, checked)
+													}
+													className="mr-2"
+												/>
+												<Label htmlFor={`day-off-${key}`} className="text-sm">
+													Day Off
+												</Label>
+											</div>
+										</div>
+
+										<div className="flex items-center">
+											<span
+												className={cn(
+													"text-sm font-semibold mr-4",
+													timeEntries[key]?.isDayOff
+														? "text-gray-400"
+														: "text-indigo-600 dark:text-indigo-400"
 												)}
-											</DialogContent>
-										</Dialog>
+											>
+												{formatHours(timeEntries[key]?.hours || 0)}
+											</span>
+											<TooltipProvider>
+												<Tooltip>
+													<TooltipTrigger asChild>
+														<Button
+															variant="ghost"
+															size="icon"
+															className="h-8 w-8"
+															onClick={() => openDaySettings(key)}
+														>
+															<SettingsIcon className="h-4 w-4" />
+														</Button>
+													</TooltipTrigger>
+													<TooltipContent>
+														<p>Day settings</p>
+													</TooltipContent>
+												</Tooltip>
+											</TooltipProvider>
+										</div>
 									</div>
 
-									{!isDisabled && (
-										<div className="w-full space-y-2">
-											<div className="grid grid-cols-2 gap-2">
-												<div>
-													<Label htmlFor={`${key}-start`} className="text-xs">
-														Start
-													</Label>
-													<Input
-														id={`${key}-start`}
-														type="time"
-														value={entry?.startTime || ""}
-														onChange={(e) =>
-															handleTimeChange(key, "startTime", e.target.value)
-														}
-														className="w-full text-center"
-														disabled={isDisabled}
-													/>
-												</div>
-												<div>
-													<Label htmlFor={`${key}-end`} className="text-xs">
-														End
-													</Label>
-													<Input
-														id={`${key}-end`}
-														type="time"
-														value={entry?.endTime || ""}
-														onChange={(e) =>
-															handleTimeChange(key, "endTime", e.target.value)
-														}
-														className="w-full text-center"
-														disabled={isDisabled}
-													/>
-												</div>
-											</div>
+									<div
+										className={cn(
+											"grid grid-cols-1 sm:grid-cols-3 gap-3",
+											timeEntries[key]?.isDayOff &&
+												"opacity-50 pointer-events-none"
+										)}
+									>
+										<TimeInput
+											label="Start Time"
+											value={timeEntries[key]?.startTime || ""}
+											onChange={(value) =>
+												handleTimeChange(key, "startTime", value)
+											}
+											disabled={timeEntries[key]?.isDayOff}
+											use24HourFormat={use24HourFormat}
+										/>
+										<TimeInput
+											label="End Time"
+											value={timeEntries[key]?.endTime || ""}
+											onChange={(value) =>
+												handleTimeChange(key, "endTime", value)
+											}
+											disabled={timeEntries[key]?.isDayOff}
+											use24HourFormat={use24HourFormat}
+										/>
 
-											<div>
-												<Label htmlFor={`${key}-lunch`} className="text-xs">
-													Lunch (hours)
-												</Label>
+										<div className="space-y-1">
+											<Label htmlFor={`lunch-${key}`} className="text-xs">
+												Lunch Break (hours)
+											</Label>
+											<div className="relative">
 												<Input
-													id={`${key}-lunch`}
 													type="number"
-													min="0"
-													max="5"
-													step="0.25"
-													value={entry?.lunchBreakHours || 0}
+													id={`lunch-${key}`}
+													value={timeEntries[key]?.lunchBreakHours || 0}
 													onChange={(e) =>
 														handleLunchBreakChange(key, e.target.value)
 													}
-													className="w-full text-center"
-													disabled={isDisabled}
+													step="0.25"
+													min="0"
+													max="8"
+													disabled={timeEntries[key]?.isDayOff}
+													className="pr-10"
 												/>
-											</div>
-
-											<div className="text-sm font-medium text-center mt-2">
-												{formatHours(entry?.hours || 0)}
+												<div className="absolute inset-y-0 right-0 flex items-center pr-2">
+													<Clock
+														className="h-4 w-4 text-gray-400"
+														aria-hidden="true"
+													/>
+												</div>
 											</div>
 										</div>
-									)}
-
-									<div className="flex items-center justify-between w-full pt-2">
-										<TooltipProvider>
-											<Tooltip>
-												<TooltipTrigger asChild>
-													<div className="flex items-center gap-1">
-														<Label
-															htmlFor={`${key}-dayoff`}
-															className="text-xs"
-														>
-															Day Off
-														</Label>
-														<Info className="h-3 w-3" />
-													</div>
-												</TooltipTrigger>
-												<TooltipContent>
-													<p className="text-xs">
-														Mark as regular day off (weekend, etc.)
-													</p>
-												</TooltipContent>
-											</Tooltip>
-										</TooltipProvider>
-										<Switch
-											id={`${key}-dayoff`}
-											checked={entry?.isDayOff || false}
-											onCheckedChange={(checked: boolean) =>
-												handleDayOffToggle(key, checked)
-											}
-										/>
 									</div>
 								</div>
-							);
-						})}
+							))}
+						</div>
 					</div>
 				</CardContent>
 			</Card>
+
+			{/* Day settings dialog */}
+			{editingDay && (
+				<DaySettingsDialog
+					isOpen={isDialogOpen}
+					onClose={() => {
+						setIsDialogOpen(false);
+						setEditingDay(null);
+					}}
+					day={editingDay}
+					daySettings={
+						defaultDaySettings[editingDay] || {
+							defaultStartTime: "09:00",
+							defaultEndTime: "17:00",
+							defaultHours: 8
+						}
+					}
+					onSave={saveDaySettings}
+					use24HourFormat={use24HourFormat}
+				/>
+			)}
 		</>
 	);
 }

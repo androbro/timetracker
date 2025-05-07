@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { workWeeks, workDays, daySettings } from "~/server/db/schema";
+import { workWeeks, workDays, daySettings, userSettings } from "~/server/db/schema";
 import { eq, and } from "drizzle-orm";
 
 export const timeRouter = createTRPCRouter({
@@ -120,6 +120,44 @@ export const timeRouter = createTRPCRouter({
 				defaultEndTime,
 				defaultHours: defaultHoursMinutes,
 			}).returning();
+		}),
+
+	getUserSettings: publicProcedure.query(async ({ ctx }) => {
+		// Get the first user settings record or create a default one if none exists
+		const settings = await ctx.db.query.userSettings.findFirst();
+
+		if (settings) {
+			return settings;
+		}
+
+		// Create default settings if none exist
+		const [defaultSettings] = await ctx.db.insert(userSettings)
+			.values({
+				use24HourFormat: true
+			})
+			.returning();
+
+		return defaultSettings;
+	}),
+
+	updateUserSettings: publicProcedure
+		.input(z.object({
+			use24HourFormat: z.boolean(),
+		}))
+		.mutation(async ({ ctx, input }) => {
+			const existingSettings = await ctx.db.query.userSettings.findFirst();
+
+			if (existingSettings) {
+				return ctx.db
+					.update(userSettings)
+					.set(input)
+					.where(eq(userSettings.id, existingSettings.id))
+					.returning();
+			}
+
+			return ctx.db.insert(userSettings)
+				.values(input)
+				.returning();
 		}),
 });
 

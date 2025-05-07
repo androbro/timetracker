@@ -53,6 +53,8 @@ export function TimeTracker() {
 	const updateDay = api.time.updateDay.useMutation();
 	const updateDaySettings = api.time.updateDaySettings.useMutation();
 	const { data: savedDaySettings } = api.time.getDaySettings.useQuery();
+	const { data: userSettings } = api.time.getUserSettings.useQuery();
+	const updateUserSettings = api.time.updateUserSettings.useMutation();
 
 	// Default settings with day-specific defaults
 	const defaultTimeSettings: TimeSettings = {
@@ -84,7 +86,8 @@ export function TimeTracker() {
 				defaultEndTime: "17:00",
 				defaultHours: 8
 			}
-		}
+		},
+		use24HourFormat: true
 	};
 
 	const [settings, setSettings] = useState<TimeSettings>(defaultTimeSettings);
@@ -102,6 +105,16 @@ export function TimeTracker() {
 			}));
 		}
 	}, [savedDaySettings]);
+
+	// Load user settings when component mounts
+	useEffect(() => {
+		if (userSettings) {
+			setSettings((prev) => ({
+				...prev,
+				use24HourFormat: userSettings.use24HourFormat
+			}));
+		}
+	}, [userSettings]);
 
 	// Helper function to get the first day (Sunday) of a specific week
 	const getFirstDayOfWeek = (year: number, weekNumber: number): Date => {
@@ -261,6 +274,16 @@ export function TimeTracker() {
 
 	const handleSettingsChange = (newSettings: TimeSettings) => {
 		setSettings(newSettings);
+
+		// If the time format has changed, update it in the database
+		if (
+			userSettings &&
+			newSettings.use24HourFormat !== userSettings.use24HourFormat
+		) {
+			updateUserSettings.mutate({
+				use24HourFormat: newSettings.use24HourFormat
+			});
+		}
 	};
 
 	const handleDaySettingsChange = async (
@@ -299,23 +322,26 @@ export function TimeTracker() {
 		}
 	};
 
-	if (isLoading) {
-		return <div>Loading...</div>;
-	}
-
 	return (
 		<div className="grid gap-6">
-			<WeeklyTimeEntry
-				initialEntries={timeEntries}
-				onTimeEntryChange={handleTimeEntryChange}
-				targetHours={settings.targetHours}
-				defaultDaySettings={settings.defaultDaySettings}
-				onDaySettingsChange={handleDaySettingsChange}
-			/>
-			<Settings
-				initialSettings={settings}
-				onSettingsChange={handleSettingsChange}
-			/>
+			{isLoading ? (
+				<div>Loading...</div>
+			) : (
+				<>
+					<WeeklyTimeEntry
+						initialEntries={timeEntries}
+						onTimeEntryChange={handleTimeEntryChange}
+						targetHours={settings.targetHours}
+						defaultDaySettings={settings.defaultDaySettings}
+						onDaySettingsChange={handleDaySettingsChange}
+						use24HourFormat={settings.use24HourFormat}
+					/>
+					<Settings
+						initialSettings={settings}
+						onSettingsChange={handleSettingsChange}
+					/>
+				</>
+			)}
 		</div>
 	);
 }

@@ -74,3 +74,14 @@ export const daySettings = createTable(
 		index("day_name_idx").on(t.dayName),
 	],
 );
+
+// User settings table to store user preferences
+export const userSettings = createTable(
+	"user_settings",
+	(t) => ({
+		id: t.integer().primaryKey().generatedByDefaultAsIdentity(),
+		use24HourFormat: t.boolean().default(true).notNull(),
+		createdAt: t.timestamp({ withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+		updatedAt: t.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+	})
+);
