@@ -12,6 +12,7 @@ import {
 	SelectValue
 } from "~/components/ui/select";
 import { api } from "~/trpc/react";
+import { WeeklyView } from "./weekly-view";
 
 interface TimeSettings {
 	targetHours: number;
@@ -41,8 +42,17 @@ export function TimeTracker() {
 	}, [currentWeek]);
 
 	const calculateHours = (start: string, end: string) => {
-		const [startHours, startMinutes] = start.split(":").map(Number);
-		const [endHours, endMinutes] = end.split(":").map(Number);
+		const [startHoursStr, startMinutesStr] = start.split(":");
+		const [endHoursStr, endMinutesStr] = end.split(":");
+
+		if (!startHoursStr || !startMinutesStr || !endHoursStr || !endMinutesStr) {
+			return 0;
+		}
+
+		const startHours = Number.parseInt(startHoursStr, 10);
+		const startMinutes = Number.parseInt(startMinutesStr, 10);
+		const endHours = Number.parseInt(endHoursStr, 10);
+		const endMinutes = Number.parseInt(endMinutesStr, 10);
 
 		let totalMinutes =
 			endHours * 60 + endMinutes - (startHours * 60 + startMinutes);
@@ -89,91 +99,98 @@ export function TimeTracker() {
 	}
 
 	return (
-		<div className="grid gap-6 md:grid-cols-2">
-			<Card>
-				<CardHeader>
-					<CardTitle>Settings</CardTitle>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					<div className="space-y-2">
-						<label htmlFor="weekly-hours" className="text-sm font-medium">
-							Weekly Hours
-						</label>
-						<Select
-							value={settings.targetHours.toString()}
-							onValueChange={(value) =>
-								setSettings((prev) => ({ ...prev, targetHours: Number(value) }))
-							}
-						>
-							<SelectTrigger id="weekly-hours">
-								<SelectValue placeholder="Select weekly hours" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="40">40 hours (5 days)</SelectItem>
-								<SelectItem value="32">32 hours (4 days)</SelectItem>
-							</SelectContent>
-						</Select>
-					</div>
+		<div className="grid gap-6">
+			<div className="grid gap-6 md:grid-cols-2">
+				<Card>
+					<CardHeader>
+						<CardTitle>Settings</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<div className="space-y-2">
+							<label htmlFor="weekly-hours" className="text-sm font-medium">
+								Weekly Hours
+							</label>
+							<Select
+								value={settings.targetHours.toString()}
+								onValueChange={(value) =>
+									setSettings((prev) => ({
+										...prev,
+										targetHours: Number(value)
+									}))
+								}
+							>
+								<SelectTrigger id="weekly-hours">
+									<SelectValue placeholder="Select weekly hours" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="40">40 hours (5 days)</SelectItem>
+									<SelectItem value="32">32 hours (4 days)</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
 
-					<div className="space-y-2">
-						<label htmlFor="break-duration" className="text-sm font-medium">
-							Break Duration (minutes)
-						</label>
-						<Input
-							id="break-duration"
-							type="number"
-							value={settings.breakDuration}
-							onChange={(e) =>
-								setSettings((prev) => ({
-									...prev,
-									breakDuration: Number(e.target.value)
-								}))
-							}
-						/>
-					</div>
-				</CardContent>
-			</Card>
+						<div className="space-y-2">
+							<label htmlFor="break-duration" className="text-sm font-medium">
+								Break Duration (minutes)
+							</label>
+							<Input
+								id="break-duration"
+								type="number"
+								value={settings.breakDuration}
+								onChange={(e) =>
+									setSettings((prev) => ({
+										...prev,
+										breakDuration: Number(e.target.value)
+									}))
+								}
+							/>
+						</div>
+					</CardContent>
+				</Card>
 
-			<Card>
-				<CardHeader>
-					<CardTitle>Time Calculator</CardTitle>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					<div className="space-y-2">
-						<label htmlFor="start-time" className="text-sm font-medium">
-							Start Time
-						</label>
-						<Input
-							id="start-time"
-							type="time"
-							value={startTime}
-							onChange={(e) => setStartTime(e.target.value)}
-						/>
-					</div>
+				<Card>
+					<CardHeader>
+						<CardTitle>Time Calculator</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<div className="space-y-2">
+							<label htmlFor="start-time" className="text-sm font-medium">
+								Start Time
+							</label>
+							<Input
+								id="start-time"
+								type="time"
+								value={startTime}
+								onChange={(e) => setStartTime(e.target.value)}
+							/>
+						</div>
 
-					<div className="space-y-2">
-						<label htmlFor="end-time" className="text-sm font-medium">
-							End Time
-						</label>
-						<Input
-							id="end-time"
-							type="time"
-							value={endTime}
-							onChange={(e) => setEndTime(e.target.value)}
-						/>
-					</div>
+						<div className="space-y-2">
+							<label htmlFor="end-time" className="text-sm font-medium">
+								End Time
+							</label>
+							<Input
+								id="end-time"
+								type="time"
+								value={endTime}
+								onChange={(e) => setEndTime(e.target.value)}
+							/>
+						</div>
 
-					<div className="pt-4">
-						<p className="text-lg">
-							Hours worked: {calculateHours(startTime, endTime).toFixed(2)}
-						</p>
-					</div>
+						<div className="pt-4">
+							<p className="text-lg">
+								Hours worked: {calculateHours(startTime, endTime).toFixed(2)}
+							</p>
+						</div>
 
-					<Button onClick={handleSave} className="w-full">
-						Save
-					</Button>
-				</CardContent>
-			</Card>
+						<Button onClick={handleSave} className="w-full">
+							Save
+						</Button>
+					</CardContent>
+				</Card>
+			</div>
+
+			<WeeklyView week={currentWeek ?? null} />
 		</div>
 	);
 }
