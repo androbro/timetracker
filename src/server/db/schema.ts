@@ -2,7 +2,7 @@
 // https://orm.drizzle.team/docs/sql-schema-declaration
 
 import { sql } from "drizzle-orm";
-import { index, pgTableCreator, timestamp, integer, time } from "drizzle-orm/pg-core";
+import { index, pgTableCreator, timestamp, integer, time, boolean } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 /**
@@ -42,6 +42,8 @@ export const workDays = createTable(
 		startTime: t.time().notNull(),
 		endTime: t.time().notNull(),
 		totalHours: t.integer().notNull(), // in minutes
+		isDayOff: t.boolean().default(false).notNull(), // Day off (like weekend)
+		isHoliday: t.boolean().default(false).notNull(), // Holiday/PTO
 		createdAt: t.timestamp({ withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 		updatedAt: t.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
 	}),

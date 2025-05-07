@@ -19,8 +19,18 @@ interface TimeSettings {
 	breakDuration: number;
 }
 
+// Define a type that helps us safely access possibly missing fields
+interface WorkDay {
+	date: Date;
+	totalHours: number;
+	isDayOff?: boolean;
+	isHoliday?: boolean;
+}
+
 interface TimeEntry {
 	hours: number;
+	isDayOff: boolean;
+	isHoliday: boolean;
 }
 
 export function TimeTracker() {
@@ -50,8 +60,14 @@ export function TimeTracker() {
 				const dayName = date
 					.toLocaleDateString("en-US", { weekday: "long" })
 					.toLowerCase();
+
+				// Safely access fields that might not exist in the database yet
+				const workDay = day as unknown as WorkDay;
+
 				entries[dayName] = {
-					hours: day.totalHours / 60 // Convert minutes to hours
+					hours: day.totalHours / 60, // Convert minutes to hours
+					isDayOff: workDay.isDayOff ?? false,
+					isHoliday: workDay.isHoliday ?? false
 				};
 			}
 			setTimeEntries(entries);
@@ -104,7 +120,9 @@ export function TimeTracker() {
 						date,
 						startTime,
 						endTime,
-						totalHours: entry.hours * 60 // Convert hours to minutes
+						totalHours: entry.hours * 60, // Convert hours to minutes
+						isDayOff: entry.isDayOff,
+						isHoliday: entry.isHoliday
 					});
 				}
 			}
@@ -119,10 +137,36 @@ export function TimeTracker() {
 					date,
 					startTime,
 					endTime,
-					totalHours: entry.hours * 60 // Convert hours to minutes
+					totalHours: entry.hours * 60, // Convert hours to minutes
+					isDayOff: entry.isDayOff,
+					isHoliday: entry.isHoliday
 				});
 			}
 		}
+	};
+
+	const handleApplyTimeToWorkdays = () => {
+		const calculatedHours = calculateHours(startTime, endTime);
+		if (calculatedHours <= 0) return;
+
+		const workdays = ["monday", "tuesday", "wednesday", "thursday", "friday"];
+		const newEntries = { ...timeEntries };
+
+		for (const day of workdays) {
+			if (
+				newEntries[day] &&
+				!newEntries[day].isDayOff &&
+				!newEntries[day].isHoliday
+			) {
+				newEntries[day] = {
+					...newEntries[day],
+					hours: calculatedHours
+				};
+			}
+		}
+
+		setTimeEntries(newEntries);
+		handleTimeEntryChange(newEntries).catch(console.error);
 	};
 
 	if (isLoading) {
@@ -208,10 +252,13 @@ export function TimeTracker() {
 							/>
 						</div>
 
-						<div className="pt-4">
+						<div className="pt-2 flex justify-between items-center">
 							<p className="text-lg">
 								Hours worked: {calculateHours(startTime, endTime).toFixed(2)}
 							</p>
+							<Button onClick={handleApplyTimeToWorkdays}>
+								Apply to Workdays
+							</Button>
 						</div>
 					</CardContent>
 				</Card>
@@ -220,6 +267,7 @@ export function TimeTracker() {
 			<WeeklyTimeEntry
 				initialEntries={timeEntries}
 				onTimeEntryChange={handleTimeEntryChange}
+				targetHours={settings.targetHours}
 			/>
 		</div>
 	);
