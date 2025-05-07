@@ -12,11 +12,15 @@ import {
 	SelectValue
 } from "~/components/ui/select";
 import { api } from "~/trpc/react";
-import { WeeklyView } from "./weekly-view";
+import { WeeklyTimeEntry } from "~/components/WeeklyTimeEntry";
 
 interface TimeSettings {
 	targetHours: number;
 	breakDuration: number;
+}
+
+interface TimeEntry {
+	hours: number;
 }
 
 export function TimeTracker() {
@@ -31,6 +35,7 @@ export function TimeTracker() {
 
 	const [startTime, setStartTime] = useState<string>("09:00");
 	const [endTime, setEndTime] = useState<string>("17:00");
+	const [timeEntries, setTimeEntries] = useState<Record<string, TimeEntry>>({});
 
 	useEffect(() => {
 		if (currentWeek) {
@@ -38,6 +43,18 @@ export function TimeTracker() {
 				targetHours: currentWeek.targetHours,
 				breakDuration: currentWeek.breakDuration
 			});
+			// Convert current week data to time entries format
+			const entries: Record<string, TimeEntry> = {};
+			for (const day of currentWeek.workDays) {
+				const date = new Date(day.date);
+				const dayName = date
+					.toLocaleDateString("en-US", { weekday: "long" })
+					.toLowerCase();
+				entries[dayName] = {
+					hours: day.totalHours / 60 // Convert minutes to hours
+				};
+			}
+			setTimeEntries(entries);
 		}
 	}, [currentWeek]);
 
@@ -61,7 +78,9 @@ export function TimeTracker() {
 		return totalMinutes / 60;
 	};
 
-	const handleSave = async () => {
+	const handleTimeEntryChange = async (entries: Record<string, TimeEntry>) => {
+		setTimeEntries(entries);
+
 		if (!currentWeek) {
 			const now = new Date();
 			const weekNumber = getWeekNumber(now);
@@ -75,22 +94,34 @@ export function TimeTracker() {
 			});
 
 			if (week[0]) {
-				await updateDay.mutateAsync({
-					weekId: week[0].id,
-					date: new Date(),
-					startTime,
-					endTime,
-					totalHours: calculateHours(startTime, endTime) * 60 // Convert to minutes
-				});
+				// Update each day's hours
+				for (const [day, entry] of Object.entries(entries)) {
+					const date = new Date();
+					date.setDate(date.getDate() - (date.getDay() - getDayNumber(day)));
+
+					await updateDay.mutateAsync({
+						weekId: week[0].id,
+						date,
+						startTime,
+						endTime,
+						totalHours: entry.hours * 60 // Convert hours to minutes
+					});
+				}
 			}
 		} else {
-			await updateDay.mutateAsync({
-				weekId: currentWeek.id,
-				date: new Date(),
-				startTime,
-				endTime,
-				totalHours: calculateHours(startTime, endTime) * 60 // Convert to minutes
-			});
+			// Update each day's hours
+			for (const [day, entry] of Object.entries(entries)) {
+				const date = new Date();
+				date.setDate(date.getDate() - (date.getDay() - getDayNumber(day)));
+
+				await updateDay.mutateAsync({
+					weekId: currentWeek.id,
+					date,
+					startTime,
+					endTime,
+					totalHours: entry.hours * 60 // Convert hours to minutes
+				});
+			}
 		}
 	};
 
@@ -182,15 +213,14 @@ export function TimeTracker() {
 								Hours worked: {calculateHours(startTime, endTime).toFixed(2)}
 							</p>
 						</div>
-
-						<Button onClick={handleSave} className="w-full">
-							Save
-						</Button>
 					</CardContent>
 				</Card>
 			</div>
 
-			<WeeklyView week={currentWeek ?? null} />
+			<WeeklyTimeEntry
+				initialEntries={timeEntries}
+				onTimeEntryChange={handleTimeEntryChange}
+			/>
 		</div>
 	);
 }
@@ -203,4 +233,17 @@ function getWeekNumber(date: Date): number {
 	d.setUTCDate(d.getUTCDate() + 4 - dayNum);
 	const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
 	return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+}
+
+function getDayNumber(day: string): number {
+	const days: Record<string, number> = {
+		sunday: 0,
+		monday: 1,
+		tuesday: 2,
+		wednesday: 3,
+		thursday: 4,
+		friday: 5,
+		saturday: 6
+	};
+	return days[day] ?? 0;
 }
