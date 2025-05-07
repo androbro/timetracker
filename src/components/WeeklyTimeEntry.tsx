@@ -25,6 +25,9 @@ import {
 interface TimeEntry {
 	hours: number;
 	isDayOff: boolean;
+	startTime: string;
+	endTime: string;
+	lunchBreakHours: number;
 }
 
 interface WeeklyTimeEntryProps {
@@ -56,13 +59,55 @@ export function WeeklyTimeEntry({
 	onDaySettingsChange
 }: WeeklyTimeEntryProps) {
 	const defaultDays: Record<DayKey, TimeEntry> = {
-		monday: { hours: 0, isDayOff: false },
-		tuesday: { hours: 0, isDayOff: false },
-		wednesday: { hours: 0, isDayOff: false },
-		thursday: { hours: 0, isDayOff: false },
-		friday: { hours: 0, isDayOff: false },
-		saturday: { hours: 0, isDayOff: true },
-		sunday: { hours: 0, isDayOff: true }
+		monday: {
+			hours: 0,
+			isDayOff: false,
+			startTime: "09:00",
+			endTime: "17:00",
+			lunchBreakHours: 0.5
+		},
+		tuesday: {
+			hours: 0,
+			isDayOff: false,
+			startTime: "09:00",
+			endTime: "17:00",
+			lunchBreakHours: 0.5
+		},
+		wednesday: {
+			hours: 0,
+			isDayOff: false,
+			startTime: "09:00",
+			endTime: "17:00",
+			lunchBreakHours: 0.5
+		},
+		thursday: {
+			hours: 0,
+			isDayOff: false,
+			startTime: "09:00",
+			endTime: "17:00",
+			lunchBreakHours: 0.5
+		},
+		friday: {
+			hours: 0,
+			isDayOff: false,
+			startTime: "09:00",
+			endTime: "17:00",
+			lunchBreakHours: 0.5
+		},
+		saturday: {
+			hours: 0,
+			isDayOff: true,
+			startTime: "09:00",
+			endTime: "17:00",
+			lunchBreakHours: 0.5
+		},
+		sunday: {
+			hours: 0,
+			isDayOff: true,
+			startTime: "09:00",
+			endTime: "17:00",
+			lunchBreakHours: 0.5
+		}
 	};
 
 	// State for editing day settings
@@ -72,17 +117,33 @@ export function WeeklyTimeEntry({
 	);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-	// Function to merge initial entries with defaults
+	// Function to merge initial entries with defaults and apply day settings
 	const mergeEntries = useCallback(() => {
 		// Start with default days
 		const merged = { ...defaultDays };
+
+		// Apply default settings first
+		for (const [day, settings] of Object.entries(defaultDaySettings)) {
+			if (day in merged) {
+				const dayKey = day as DayKey;
+				merged[dayKey].startTime =
+					settings.defaultStartTime || merged[dayKey].startTime;
+				merged[dayKey].endTime =
+					settings.defaultEndTime || merged[dayKey].endTime;
+				merged[dayKey].hours = calculateHours(
+					merged[dayKey].startTime,
+					merged[dayKey].endTime,
+					merged[dayKey].lunchBreakHours
+				);
+			}
+		}
 
 		// Process initial entries and merge them
 		for (const [day, entry] of Object.entries(initialEntries)) {
 			if (entry && day in defaultDays) {
 				// Safe to cast since we've checked day is in defaultDays
 				const dayKey = day as DayKey;
-				const defaultEntry = defaultDays[dayKey];
+				const defaultEntry = merged[dayKey];
 
 				merged[dayKey] = {
 					hours:
@@ -90,13 +151,55 @@ export function WeeklyTimeEntry({
 					isDayOff:
 						typeof entry.isDayOff === "boolean"
 							? entry.isDayOff
-							: defaultEntry.isDayOff
+							: defaultEntry.isDayOff,
+					startTime: entry.startTime || defaultEntry.startTime,
+					endTime: entry.endTime || defaultEntry.endTime,
+					lunchBreakHours: entry.lunchBreakHours || defaultEntry.lunchBreakHours
 				};
 			}
 		}
 
 		return merged;
-	}, [initialEntries]);
+	}, [initialEntries, defaultDaySettings]);
+
+	// Calculate hours based on start time, end time, and lunch break
+	const calculateHours = (
+		startTime: string,
+		endTime: string,
+		lunchBreakHours: number
+	) => {
+		if (!startTime || !endTime) return 0;
+
+		const startParts = startTime.split(":").map(Number);
+		const endParts = endTime.split(":").map(Number);
+
+		if (startParts.length < 2 || endParts.length < 2) return 0;
+
+		const startHour = startParts[0] || 0;
+		const startMinute = startParts[1] || 0;
+		const endHour = endParts[0] || 0;
+		const endMinute = endParts[1] || 0;
+
+		const startMinutes = startHour * 60 + startMinute;
+		const endMinutes = endHour * 60 + endMinute;
+
+		// Calculate total work minutes and subtract lunch break
+		const workMinutes = endMinutes - startMinutes - lunchBreakHours * 60;
+
+		// Convert back to hours with decimal
+		return Math.max(0, workMinutes / 60);
+	};
+
+	// Format hours to display in a more readable way (e.g., 7h 30m)
+	const formatHours = (hours: number) => {
+		const wholeHours = Math.floor(hours);
+		const minutes = Math.round((hours - wholeHours) * 60);
+
+		if (minutes === 0) {
+			return `${wholeHours}h`;
+		}
+		return `${wholeHours}h ${minutes}m`;
+	};
 
 	const [timeEntries, setTimeEntries] = useState<Record<string, TimeEntry>>(
 		() => mergeEntries()
@@ -107,17 +210,60 @@ export function WeeklyTimeEntry({
 		setTimeEntries(mergeEntries());
 	}, [mergeEntries]);
 
-	const handleHoursChange = (day: string, value: string) => {
-		// Parse the input as a float to support decimal hours (like 1.5 for 1h 30m)
-		const hours = Number.parseFloat(value) || 0;
+	const handleTimeChange = (
+		day: string,
+		field: "startTime" | "endTime",
+		value: string
+	) => {
 		const newEntries: Record<string, TimeEntry> = { ...timeEntries };
 
-		// Ensure we have a valid entry for this day before updating
-		if (timeEntries[day]) {
-			newEntries[day] = {
-				...timeEntries[day],
-				hours
+		if (newEntries[day]) {
+			const currentEntry = newEntries[day];
+			const updatedEntry: TimeEntry = {
+				hours: currentEntry.hours,
+				isDayOff: currentEntry.isDayOff,
+				startTime: currentEntry.startTime,
+				endTime: currentEntry.endTime,
+				lunchBreakHours: currentEntry.lunchBreakHours,
+				...{ [field]: value }
 			};
+
+			// Recalculate hours based on start time, end time and lunch break
+			updatedEntry.hours = calculateHours(
+				updatedEntry.startTime,
+				updatedEntry.endTime,
+				updatedEntry.lunchBreakHours
+			);
+
+			newEntries[day] = updatedEntry;
+		}
+
+		setTimeEntries(newEntries);
+		onTimeEntryChange?.(newEntries, day);
+	};
+
+	const handleLunchBreakChange = (day: string, value: string) => {
+		const lunchBreakHours = Number.parseFloat(value) || 0;
+		const newEntries: Record<string, TimeEntry> = { ...timeEntries };
+
+		if (newEntries[day]) {
+			const currentEntry = newEntries[day];
+			const updatedEntry: TimeEntry = {
+				hours: currentEntry.hours,
+				isDayOff: currentEntry.isDayOff,
+				startTime: currentEntry.startTime,
+				endTime: currentEntry.endTime,
+				lunchBreakHours: lunchBreakHours
+			};
+
+			// Recalculate hours
+			updatedEntry.hours = calculateHours(
+				updatedEntry.startTime,
+				updatedEntry.endTime,
+				updatedEntry.lunchBreakHours
+			);
+
+			newEntries[day] = updatedEntry;
 		}
 
 		setTimeEntries(newEntries);
@@ -151,26 +297,35 @@ export function WeeklyTimeEntry({
 		{ key: "sunday", label: "Sunday" }
 	] as const;
 
-	// Fill in default hours for all workdays based on settings
+	// Apply default hours for all workdays based on settings
 	const applyDefaultHours = () => {
 		const newEntries = { ...timeEntries };
 
 		for (const { key } of days) {
-			// Skip days off and weekend days
+			// Skip days off
 			if (newEntries[key]?.isDayOff) {
 				continue;
 			}
 
-			// Use day-specific default hours if available, otherwise use 8 hours as fallback
+			// Use day-specific default settings if available
 			const daySetting = defaultDaySettings[key];
-			if (daySetting) {
-				const defaultHours = daySetting.defaultHours ?? 8;
-
+			if (daySetting && newEntries[key]) {
+				const currentEntry = newEntries[key];
 				newEntries[key] = {
-					...newEntries[key],
-					hours: defaultHours,
-					isDayOff: newEntries[key]?.isDayOff || false
+					...currentEntry,
+					startTime: daySetting.defaultStartTime || currentEntry.startTime,
+					endTime: daySetting.defaultEndTime || currentEntry.endTime,
+					isDayOff: currentEntry.isDayOff
 				};
+
+				// Recalculate hours
+				if (newEntries[key]) {
+					newEntries[key].hours = calculateHours(
+						newEntries[key].startTime,
+						newEntries[key].endTime,
+						newEntries[key].lunchBreakHours
+					);
+				}
 			}
 		}
 
@@ -293,7 +448,7 @@ export function WeeklyTimeEntry({
 						<div className="flex gap-2 items-center">
 							<div className="text-lg flex gap-4 items-center">
 								<span className="text-sm font-normal">
-									Total: {totalHoursWorked.toFixed(2)} hrs
+									Total: {formatHours(totalHoursWorked)}
 								</span>
 								<span
 									className={`text-sm font-normal ${
@@ -304,7 +459,7 @@ export function WeeklyTimeEntry({
 											: ""
 									}`}
 								>
-									Remaining: {remainingHours.toFixed(2)} hrs
+									Remaining: {formatHours(Math.abs(remainingHours))}
 								</span>
 							</div>
 							<div className="flex gap-2">
@@ -320,7 +475,7 @@ export function WeeklyTimeEntry({
 											</Button>
 										</TooltipTrigger>
 										<TooltipContent>
-											<p>Apply default hours to workdays</p>
+											<p>Apply default times to workdays</p>
 										</TooltipContent>
 									</Tooltip>
 								</TooltipProvider>
@@ -450,25 +605,65 @@ export function WeeklyTimeEntry({
 										</Dialog>
 									</div>
 
-									{!isDisabled && daySettings && (
-										<div className="text-xs text-gray-500 dark:text-gray-400 w-full text-center">
-											{daySettings.defaultStartTime} -{" "}
-											{daySettings.defaultEndTime}
+									{!isDisabled && (
+										<div className="w-full space-y-2">
+											<div className="grid grid-cols-2 gap-2">
+												<div>
+													<Label htmlFor={`${key}-start`} className="text-xs">
+														Start
+													</Label>
+													<Input
+														id={`${key}-start`}
+														type="time"
+														value={entry?.startTime || ""}
+														onChange={(e) =>
+															handleTimeChange(key, "startTime", e.target.value)
+														}
+														className="w-full text-center"
+														disabled={isDisabled}
+													/>
+												</div>
+												<div>
+													<Label htmlFor={`${key}-end`} className="text-xs">
+														End
+													</Label>
+													<Input
+														id={`${key}-end`}
+														type="time"
+														value={entry?.endTime || ""}
+														onChange={(e) =>
+															handleTimeChange(key, "endTime", e.target.value)
+														}
+														className="w-full text-center"
+														disabled={isDisabled}
+													/>
+												</div>
+											</div>
+
+											<div>
+												<Label htmlFor={`${key}-lunch`} className="text-xs">
+													Lunch (hours)
+												</Label>
+												<Input
+													id={`${key}-lunch`}
+													type="number"
+													min="0"
+													max="5"
+													step="0.25"
+													value={entry?.lunchBreakHours || 0}
+													onChange={(e) =>
+														handleLunchBreakChange(key, e.target.value)
+													}
+													className="w-full text-center"
+													disabled={isDisabled}
+												/>
+											</div>
+
+											<div className="text-sm font-medium text-center mt-2">
+												{formatHours(entry?.hours || 0)}
+											</div>
 										</div>
 									)}
-
-									<Input
-										id={`${key}-hours`}
-										type="number"
-										min="0"
-										max="24"
-										step="0.25"
-										value={entry?.hours || 0}
-										onChange={(e) => handleHoursChange(key, e.target.value)}
-										className="w-full text-center"
-										placeholder="0"
-										disabled={!!isDisabled}
-									/>
 
 									<div className="flex items-center justify-between w-full pt-2">
 										<TooltipProvider>
