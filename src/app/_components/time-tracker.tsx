@@ -88,7 +88,7 @@ export function TimeTracker() {
 			}
 		},
 		use24HourFormat: true,
-		showWeekends: true
+		showWeekends: false
 	};
 
 	const [settings, setSettings] = useState<TimeSettings>(defaultTimeSettings);
@@ -110,10 +110,18 @@ export function TimeTracker() {
 	// Load user settings when component mounts
 	useEffect(() => {
 		if (userSettings) {
+			const updatedSettings: Partial<TimeSettings> = {
+				use24HourFormat: userSettings.use24HourFormat
+			};
+
+			// Only set showWeekends if it's defined in the database
+			if (userSettings.showWeekends !== undefined) {
+				updatedSettings.showWeekends = userSettings.showWeekends;
+			}
+
 			setSettings((prev) => ({
 				...prev,
-				use24HourFormat: userSettings.use24HourFormat,
-				showWeekends: userSettings.showWeekends ?? true
+				...updatedSettings
 			}));
 		}
 	}, [userSettings]);
@@ -328,7 +336,7 @@ export function TimeTracker() {
 
 	return (
 		<div className="grid gap-6">
-			{isLoading ? (
+			{isLoading || !userSettings ? (
 				<div>Loading...</div>
 			) : (
 				<>

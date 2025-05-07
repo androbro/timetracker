@@ -133,7 +133,8 @@ export const timeRouter = createTRPCRouter({
 		// Create default settings if none exist
 		const [defaultSettings] = await ctx.db.insert(userSettings)
 			.values({
-				use24HourFormat: true
+				use24HourFormat: true,
+				showWeekends: false
 			})
 			.returning();
 
