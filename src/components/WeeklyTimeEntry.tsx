@@ -4,19 +4,18 @@ import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Switch } from "./ui/switch";
+import { Switch } from "~/components/ui/switch";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
 	TooltipTrigger
-} from "./ui/tooltip";
+} from "~/components/ui/tooltip";
 import { Info } from "lucide-react";
 
 interface TimeEntry {
 	hours: number;
 	isDayOff: boolean;
-	isHoliday: boolean;
 }
 
 interface WeeklyTimeEntryProps {
@@ -41,13 +40,13 @@ export function WeeklyTimeEntry({
 	targetHours
 }: WeeklyTimeEntryProps) {
 	const defaultDays: Record<DayKey, TimeEntry> = {
-		monday: { hours: 0, isDayOff: false, isHoliday: false },
-		tuesday: { hours: 0, isDayOff: false, isHoliday: false },
-		wednesday: { hours: 0, isDayOff: false, isHoliday: false },
-		thursday: { hours: 0, isDayOff: false, isHoliday: false },
-		friday: { hours: 0, isDayOff: false, isHoliday: false },
-		saturday: { hours: 0, isDayOff: true, isHoliday: false },
-		sunday: { hours: 0, isDayOff: true, isHoliday: false }
+		monday: { hours: 0, isDayOff: false },
+		tuesday: { hours: 0, isDayOff: false },
+		wednesday: { hours: 0, isDayOff: false },
+		thursday: { hours: 0, isDayOff: false },
+		friday: { hours: 0, isDayOff: false },
+		saturday: { hours: 0, isDayOff: true },
+		sunday: { hours: 0, isDayOff: true }
 	};
 
 	// Initialize entries with defaults and merge with initial entries
@@ -67,11 +66,7 @@ export function WeeklyTimeEntry({
 				isDayOff:
 					typeof entry.isDayOff === "boolean"
 						? entry.isDayOff
-						: defaultEntry.isDayOff,
-				isHoliday:
-					typeof entry.isHoliday === "boolean"
-						? entry.isHoliday
-						: defaultEntry.isHoliday
+						: defaultEntry.isDayOff
 			};
 		}
 	}
@@ -112,23 +107,6 @@ export function WeeklyTimeEntry({
 		onTimeEntryChange?.(newEntries);
 	};
 
-	const handleHolidayToggle = (day: string, isHoliday: boolean) => {
-		const newEntries: Record<string, TimeEntry> = { ...timeEntries };
-
-		// Ensure we have a valid entry for this day before updating
-		if (timeEntries[day]) {
-			newEntries[day] = {
-				...timeEntries[day],
-				isHoliday,
-				// If marking as holiday, reset hours to 0
-				hours: isHoliday ? 0 : timeEntries[day].hours
-			};
-		}
-
-		setTimeEntries(newEntries);
-		onTimeEntryChange?.(newEntries);
-	};
-
 	const days = [
 		{ key: "monday", label: "Monday" },
 		{ key: "tuesday", label: "Tuesday" },
@@ -141,8 +119,7 @@ export function WeeklyTimeEntry({
 
 	// Calculate total hours worked and remaining hours
 	const totalHoursWorked = Object.values(timeEntries).reduce(
-		(sum, entry) =>
-			entry.isDayOff || entry.isHoliday ? sum : sum + entry.hours,
+		(sum, entry) => (entry.isDayOff ? sum : sum + entry.hours),
 		0
 	);
 	const remainingHours = targetHours - totalHoursWorked;
@@ -174,7 +151,7 @@ export function WeeklyTimeEntry({
 				<div className="grid grid-cols-7 gap-4">
 					{days.map(({ key, label }) => {
 						const entry = timeEntries[key];
-						const isDisabled = entry?.isDayOff || entry?.isHoliday;
+						const isDisabled = entry?.isDayOff;
 
 						return (
 							<div
@@ -222,35 +199,6 @@ export function WeeklyTimeEntry({
 										onCheckedChange={(checked: boolean) =>
 											handleDayOffToggle(key, checked)
 										}
-										disabled={entry?.isHoliday || false}
-									/>
-								</div>
-
-								<div className="flex items-center justify-between w-full">
-									<TooltipProvider>
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<div className="flex items-center gap-1">
-													<Label htmlFor={`${key}-holiday`} className="text-xs">
-														Holiday
-													</Label>
-													<Info className="h-3 w-3" />
-												</div>
-											</TooltipTrigger>
-											<TooltipContent>
-												<p className="text-xs">
-													Mark as holiday (paid time off)
-												</p>
-											</TooltipContent>
-										</Tooltip>
-									</TooltipProvider>
-									<Switch
-										id={`${key}-holiday`}
-										checked={entry?.isHoliday || false}
-										onCheckedChange={(checked: boolean) =>
-											handleHolidayToggle(key, checked)
-										}
-										disabled={entry?.isDayOff || false}
 									/>
 								</div>
 							</div>

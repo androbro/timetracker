@@ -41,7 +41,6 @@ export const timeRouter = createTRPCRouter({
 			endTime: z.string(),
 			totalHours: z.number(),
 			isDayOff: z.boolean().default(false),
-			isHoliday: z.boolean().default(false),
 		}))
 		.mutation(async ({ ctx, input }) => {
 			const existingDay = await ctx.db.query.workDays.findFirst({

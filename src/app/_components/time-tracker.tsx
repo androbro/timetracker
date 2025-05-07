@@ -30,7 +30,6 @@ interface WorkDay {
 interface TimeEntry {
 	hours: number;
 	isDayOff: boolean;
-	isHoliday: boolean;
 }
 
 export function TimeTracker() {
@@ -66,8 +65,7 @@ export function TimeTracker() {
 
 				entries[dayName] = {
 					hours: day.totalHours / 60, // Convert minutes to hours
-					isDayOff: workDay.isDayOff ?? false,
-					isHoliday: workDay.isHoliday ?? false
+					isDayOff: workDay.isDayOff ?? false
 				};
 			}
 			setTimeEntries(entries);
@@ -121,8 +119,7 @@ export function TimeTracker() {
 						startTime,
 						endTime,
 						totalHours: entry.hours * 60, // Convert hours to minutes
-						isDayOff: entry.isDayOff,
-						isHoliday: entry.isHoliday
+						isDayOff: entry.isDayOff
 					});
 				}
 			}
@@ -138,8 +135,7 @@ export function TimeTracker() {
 					startTime,
 					endTime,
 					totalHours: entry.hours * 60, // Convert hours to minutes
-					isDayOff: entry.isDayOff,
-					isHoliday: entry.isHoliday
+					isDayOff: entry.isDayOff
 				});
 			}
 		}
@@ -153,11 +149,7 @@ export function TimeTracker() {
 		const newEntries = { ...timeEntries };
 
 		for (const day of workdays) {
-			if (
-				newEntries[day] &&
-				!newEntries[day].isDayOff &&
-				!newEntries[day].isHoliday
-			) {
+			if (newEntries[day] && !newEntries[day].isDayOff) {
 				newEntries[day] = {
 					...newEntries[day],
 					hours: calculatedHours

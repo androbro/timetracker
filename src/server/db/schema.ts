@@ -43,7 +43,6 @@ export const workDays = createTable(
 		endTime: t.time().notNull(),
 		totalHours: t.integer().notNull(), // in minutes
 		isDayOff: t.boolean().default(false).notNull(), // Day off (like weekend)
-		isHoliday: t.boolean().default(false).notNull(), // Holiday/PTO
 		createdAt: t.timestamp({ withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 		updatedAt: t.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
 	}),
