@@ -29,6 +29,7 @@ export interface WeeklyTimeEntryProps {
 	onDaySettingsChange?: (day: string, settings: DaySettings) => void;
 	use24HourFormat?: boolean;
 	showWeekends?: boolean;
+	onOpenSettings?: () => void;
 }
 
 export const DAYS = [

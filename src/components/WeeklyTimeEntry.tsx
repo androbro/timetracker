@@ -34,7 +34,8 @@ export function WeeklyTimeEntry({
 	defaultDaySettings,
 	onDaySettingsChange,
 	use24HourFormat = true,
-	showWeekends = true
+	showWeekends = true,
+	onOpenSettings
 }: WeeklyTimeEntryProps) {
 	const defaultDays: Record<DayKey, TimeEntry> = {
 		monday: {
@@ -384,6 +385,17 @@ export function WeeklyTimeEntry({
 							>
 								Fill Target Hours
 							</Button>
+							{onOpenSettings && (
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={onOpenSettings}
+									className="h-8 text-xs flex items-center gap-1"
+								>
+									<SettingsIcon className="h-3 w-3" />
+									Settings
+								</Button>
+							)}
 						</div>
 					</div>
 				</CardHeader>

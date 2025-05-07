@@ -9,6 +9,8 @@ import {
 	type TimeSettings,
 	type DaySettings
 } from "~/components/Settings";
+import { Button } from "~/components/ui/button";
+import { Settings as SettingsIcon } from "lucide-react";
 
 interface WorkWeek {
 	id: number;
@@ -55,6 +57,7 @@ export function TimeTracker() {
 	const { data: savedDaySettings } = api.time.getDaySettings.useQuery();
 	const { data: userSettings } = api.time.getUserSettings.useQuery();
 	const updateUserSettings = api.time.updateUserSettings.useMutation();
+	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
 	// Default settings with day-specific defaults
 	const defaultTimeSettings: TimeSettings = {
@@ -348,10 +351,13 @@ export function TimeTracker() {
 						onDaySettingsChange={handleDaySettingsChange}
 						use24HourFormat={settings.use24HourFormat}
 						showWeekends={settings.showWeekends}
+						onOpenSettings={() => setIsSettingsOpen(true)}
 					/>
 					<Settings
 						initialSettings={settings}
 						onSettingsChange={handleSettingsChange}
+						open={isSettingsOpen}
+						onOpenChange={setIsSettingsOpen}
 					/>
 				</>
 			)}
