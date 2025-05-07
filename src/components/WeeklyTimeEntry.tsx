@@ -70,6 +70,7 @@ export function WeeklyTimeEntry({
 	const [tempDaySettings, setTempDaySettings] = useState<DaySettings | null>(
 		null
 	);
+	const [isDialogOpen, setIsDialogOpen] = useState(false);
 
 	// Function to merge initial entries with defaults
 	const mergeEntries = useCallback(() => {
@@ -163,9 +164,11 @@ export function WeeklyTimeEntry({
 			// Use day-specific default hours if available, otherwise use 8 hours as fallback
 			const daySetting = defaultDaySettings[key];
 			if (daySetting) {
+				const defaultHours = daySetting.defaultHours ?? 8;
+
 				newEntries[key] = {
 					...newEntries[key],
-					hours: daySetting.defaultHours,
+					hours: defaultHours,
 					isDayOff: newEntries[key]?.isDayOff || false
 				};
 			}
@@ -236,20 +239,42 @@ export function WeeklyTimeEntry({
 	const saveDaySettings = () => {
 		if (!editingDay || !tempDaySettings || !onDaySettingsChange) return;
 
-		onDaySettingsChange(editingDay, tempDaySettings);
+		// Ensure all properties are properly defined before saving
+		const safeSettings: DaySettings = {
+			defaultStartTime: tempDaySettings.defaultStartTime || "09:00",
+			defaultEndTime: tempDaySettings.defaultEndTime || "17:00",
+			defaultHours: tempDaySettings.defaultHours ?? 8
+		};
+
+		onDaySettingsChange(editingDay, safeSettings);
+		setIsDialogOpen(false);
 		setEditingDay(null);
 		setTempDaySettings(null);
 	};
 
 	// Open day settings dialog
 	const openDaySettings = (day: string) => {
-		const settings = defaultDaySettings[day] || {
+		// Create a fully defined default settings object
+		const defaultSettings: DaySettings = {
 			defaultStartTime: "09:00",
 			defaultEndTime: "17:00",
 			defaultHours: 8
 		};
+
+		// Get existing settings or use defaults
+		const settings = defaultDaySettings[day] || defaultSettings;
+
+		// Make sure all fields are defined, even if the original object had undefined values
+		const fullSettings: DaySettings = {
+			defaultStartTime:
+				settings.defaultStartTime || defaultSettings.defaultStartTime,
+			defaultEndTime: settings.defaultEndTime || defaultSettings.defaultEndTime,
+			defaultHours: settings.defaultHours ?? defaultSettings.defaultHours
+		};
+
 		setEditingDay(day);
-		setTempDaySettings({ ...settings });
+		setTempDaySettings(fullSettings);
+		setIsDialogOpen(true);
 	};
 
 	// Calculate total hours worked and remaining hours
@@ -337,7 +362,16 @@ export function WeeklyTimeEntry({
 								>
 									<div className="flex justify-between items-center w-full">
 										<Label htmlFor={`${key}-hours`}>{label}</Label>
-										<Dialog>
+										<Dialog
+											open={isDialogOpen && editingDay === key}
+											onOpenChange={(open) => {
+												setIsDialogOpen(open);
+												if (!open) {
+													setEditingDay(null);
+													setTempDaySettings(null);
+												}
+											}}
+										>
 											<DialogTrigger asChild>
 												<Button
 													variant="ghost"

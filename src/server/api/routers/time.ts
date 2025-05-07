@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { workWeeks, workDays } from "~/server/db/schema";
+import { workWeeks, workDays, daySettings } from "~/server/db/schema";
 import { eq, and } from "drizzle-orm";
 
 export const timeRouter = createTRPCRouter({
@@ -59,6 +59,67 @@ export const timeRouter = createTRPCRouter({
 			}
 
 			return ctx.db.insert(workDays).values(input).returning();
+		}),
+
+	getDaySettings: publicProcedure
+		.query(async ({ ctx }) => {
+			const settings = await ctx.db.query.daySettings.findMany();
+
+			// Define a proper type for the day settings
+			interface DaySettingsOutput {
+				defaultStartTime: string;
+				defaultEndTime: string;
+				defaultHours: number;
+			}
+
+			// Convert to an object with day names as keys
+			const settingsMap: Record<string, DaySettingsOutput> = {};
+			for (const setting of settings) {
+				settingsMap[setting.dayName] = {
+					defaultStartTime: setting.defaultStartTime,
+					defaultEndTime: setting.defaultEndTime,
+					defaultHours: setting.defaultHours / 60, // Convert minutes to hours for frontend
+				};
+			}
+
+			return settingsMap;
+		}),
+
+	updateDaySettings: publicProcedure
+		.input(z.object({
+			dayName: z.string(),
+			defaultStartTime: z.string(),
+			defaultEndTime: z.string(),
+			defaultHours: z.number(),
+		}))
+		.mutation(async ({ ctx, input }) => {
+			const { dayName, defaultStartTime, defaultEndTime, defaultHours } = input;
+
+			// Convert hours to minutes for storage
+			const defaultHoursMinutes = Math.round(defaultHours * 60);
+
+			const existingSettings = await ctx.db.query.daySettings.findFirst({
+				where: eq(daySettings.dayName, dayName),
+			});
+
+			if (existingSettings) {
+				return ctx.db
+					.update(daySettings)
+					.set({
+						defaultStartTime,
+						defaultEndTime,
+						defaultHours: defaultHoursMinutes,
+					})
+					.where(eq(daySettings.dayName, dayName))
+					.returning();
+			}
+
+			return ctx.db.insert(daySettings).values({
+				dayName,
+				defaultStartTime,
+				defaultEndTime,
+				defaultHours: defaultHoursMinutes,
+			}).returning();
 		}),
 });
 

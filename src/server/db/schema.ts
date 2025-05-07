@@ -2,7 +2,7 @@
 // https://orm.drizzle.team/docs/sql-schema-declaration
 
 import { sql } from "drizzle-orm";
-import { index, pgTableCreator, timestamp, integer, time, boolean } from "drizzle-orm/pg-core";
+import { index, pgTableCreator, timestamp, integer, time, boolean, text, varchar } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 /**
@@ -57,3 +57,20 @@ export const workDaysRelations = relations(workDays, ({ one }) => ({
 		references: [workWeeks.id],
 	}),
 }));
+
+// Day settings table to store default settings for each day of the week
+export const daySettings = createTable(
+	"day_settings",
+	(t) => ({
+		id: t.integer().primaryKey().generatedByDefaultAsIdentity(),
+		dayName: t.varchar("dayName", { length: 20 }).notNull(), // monday, tuesday, etc.
+		defaultStartTime: t.time().notNull().default(sql`'09:00:00'`),
+		defaultEndTime: t.time().notNull().default(sql`'17:00:00'`),
+		defaultHours: t.integer().notNull().default(480), // in minutes, default 8 hours (480 min)
+		createdAt: t.timestamp({ withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+		updatedAt: t.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+	}),
+	(t) => [
+		index("day_name_idx").on(t.dayName),
+	],
+);

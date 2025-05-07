@@ -51,6 +51,8 @@ export function TimeTracker() {
 	const { data: currentWeek, isLoading } = api.time.getCurrentWeek.useQuery();
 	const createWeek = api.time.createWeek.useMutation();
 	const updateDay = api.time.updateDay.useMutation();
+	const updateDaySettings = api.time.updateDaySettings.useMutation();
+	const { data: savedDaySettings } = api.time.getDaySettings.useQuery();
 
 	// Default settings with day-specific defaults
 	const defaultTimeSettings: TimeSettings = {
@@ -87,6 +89,19 @@ export function TimeTracker() {
 
 	const [settings, setSettings] = useState<TimeSettings>(defaultTimeSettings);
 	const [timeEntries, setTimeEntries] = useState<Record<string, TimeEntry>>({});
+
+	// Load saved day settings when component mounts
+	useEffect(() => {
+		if (savedDaySettings) {
+			setSettings((prev) => ({
+				...prev,
+				defaultDaySettings: {
+					...prev.defaultDaySettings,
+					...savedDaySettings
+				}
+			}));
+		}
+	}, [savedDaySettings]);
 
 	// Helper function to get the first day (Sunday) of a specific week
 	const getFirstDayOfWeek = (year: number, weekNumber: number): Date => {
@@ -248,14 +263,40 @@ export function TimeTracker() {
 		setSettings(newSettings);
 	};
 
-	const handleDaySettingsChange = (day: string, daySettings: DaySettings) => {
-		setSettings((prev) => ({
-			...prev,
-			defaultDaySettings: {
-				...prev.defaultDaySettings,
-				[day]: daySettings
-			}
-		}));
+	const handleDaySettingsChange = async (
+		day: string,
+		daySettings: DaySettings
+	) => {
+		// Update local state first for immediate UI feedback
+		setSettings((prev) => {
+			// Create a new defaultDaySettings object
+			const newDaySettings = { ...prev.defaultDaySettings };
+
+			// Ensure the day settings object is fully defined
+			newDaySettings[day] = {
+				defaultStartTime: daySettings.defaultStartTime || "09:00",
+				defaultEndTime: daySettings.defaultEndTime || "17:00",
+				defaultHours: daySettings.defaultHours ?? 8
+			};
+
+			return {
+				...prev,
+				defaultDaySettings: newDaySettings
+			};
+		});
+
+		// Then save to the database
+		try {
+			await updateDaySettings.mutateAsync({
+				dayName: day,
+				defaultStartTime: daySettings.defaultStartTime || "09:00",
+				defaultEndTime: daySettings.defaultEndTime || "17:00",
+				defaultHours: daySettings.defaultHours ?? 8
+			});
+		} catch (error) {
+			console.error("Failed to save day settings:", error);
+			// You could implement error handling or rollback here
+		}
 	};
 
 	if (isLoading) {
