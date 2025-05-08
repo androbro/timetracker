@@ -9,6 +9,9 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
+import { useDaySettingsDialog } from "~/lib/hooks/useDaySettingsDialog";
+import { useTimeUtils } from "~/lib/hooks/useTimeUtils";
+import { useWeeklyTimeEntryState } from "~/lib/hooks/useWeeklyTimeEntryState";
 import { cn } from "~/lib/utils";
 import type { DaySettings } from "./Settings";
 import { Button } from "./ui/button";
@@ -25,7 +28,6 @@ import {
 	type TimeEntry,
 	type WeeklyTimeEntryProps,
 } from "./types/timeEntryTypes";
-import { calculateHours, formatHours } from "./utils/timeUtils";
 
 export function WeeklyTimeEntry({
 	onTimeEntryChange,
@@ -37,319 +39,33 @@ export function WeeklyTimeEntry({
 	showWeekends = true,
 	onOpenSettings,
 }: WeeklyTimeEntryProps) {
-	const defaultDays: Record<DayKey, TimeEntry> = {
-		monday: {
-			hours: 0,
-			isDayOff: false,
-			startTime: "09:00",
-			endTime: "17:00",
-			lunchBreakHours: 0.5,
-		},
-		tuesday: {
-			hours: 0,
-			isDayOff: false,
-			startTime: "09:00",
-			endTime: "17:00",
-			lunchBreakHours: 0.5,
-		},
-		wednesday: {
-			hours: 0,
-			isDayOff: false,
-			startTime: "09:00",
-			endTime: "17:00",
-			lunchBreakHours: 0.5,
-		},
-		thursday: {
-			hours: 0,
-			isDayOff: false,
-			startTime: "09:00",
-			endTime: "17:00",
-			lunchBreakHours: 0.5,
-		},
-		friday: {
-			hours: 0,
-			isDayOff: false,
-			startTime: "09:00",
-			endTime: "17:00",
-			lunchBreakHours: 0.5,
-		},
-		saturday: {
-			hours: 0,
-			isDayOff: true,
-			startTime: "09:00",
-			endTime: "17:00",
-			lunchBreakHours: 0.5,
-		},
-		sunday: {
-			hours: 0,
-			isDayOff: true,
-			startTime: "09:00",
-			endTime: "17:00",
-			lunchBreakHours: 0.5,
-		},
-	};
+	// Use the extracted hooks
+	const { formatHours } = useTimeUtils();
 
-	// State for editing day settings
-	const [editingDay, setEditingDay] = useState<string | null>(null);
-	const [isDialogOpen, setIsDialogOpen] = useState(false);
+	const {
+		timeEntries,
+		totalHours,
+		handleTimeChange,
+		handleLunchBreakChange,
+		handleDayOffToggle,
+		applyDefaultHours,
+		fillTargetHours,
+	} = useWeeklyTimeEntryState({
+		initialEntries,
+		defaultDaySettings,
+		targetHours,
+		onTimeEntryChange,
+	});
 
-	// Function to merge initial entries with defaults and apply day settings
-	const mergeEntries = useCallback(() => {
-		// Start with default days
-		const merged = { ...defaultDays };
-
-		// Apply default settings first
-		for (const [day, settings] of Object.entries(defaultDaySettings)) {
-			if (day in merged) {
-				const dayKey = day as DayKey;
-				merged[dayKey].startTime =
-					settings.defaultStartTime || merged[dayKey].startTime;
-				merged[dayKey].endTime =
-					settings.defaultEndTime || merged[dayKey].endTime;
-				merged[dayKey].hours = calculateHours(
-					merged[dayKey].startTime,
-					merged[dayKey].endTime,
-					merged[dayKey].lunchBreakHours,
-				);
-			}
-		}
-
-		// Process initial entries and merge them
-		for (const [day, entry] of Object.entries(initialEntries)) {
-			if (entry && day in defaultDays) {
-				// Safe to cast since we've checked day is in defaultDays
-				const dayKey = day as DayKey;
-				const defaultEntry = merged[dayKey];
-
-				merged[dayKey] = {
-					hours:
-						typeof entry.hours === "number" ? entry.hours : defaultEntry.hours,
-					isDayOff:
-						typeof entry.isDayOff === "boolean"
-							? entry.isDayOff
-							: defaultEntry.isDayOff,
-					startTime: entry.startTime || defaultEntry.startTime,
-					endTime: entry.endTime || defaultEntry.endTime,
-					lunchBreakHours:
-						entry.lunchBreakHours || defaultEntry.lunchBreakHours,
-				};
-			}
-		}
-
-		return merged;
-	}, [initialEntries, defaultDaySettings]);
-
-	const [timeEntries, setTimeEntries] = useState<Record<string, TimeEntry>>(
-		() => mergeEntries(),
-	);
-
-	// Update timeEntries when initialEntries changes
-	useEffect(() => {
-		setTimeEntries(mergeEntries());
-	}, [mergeEntries]);
-
-	const handleTimeChange = (
-		day: string,
-		field: "startTime" | "endTime",
-		value: string,
-	) => {
-		const newEntries: Record<string, TimeEntry> = { ...timeEntries };
-
-		if (newEntries[day]) {
-			const currentEntry = newEntries[day];
-			const updatedEntry: TimeEntry = {
-				hours: currentEntry.hours,
-				isDayOff: currentEntry.isDayOff,
-				startTime: currentEntry.startTime,
-				endTime: currentEntry.endTime,
-				lunchBreakHours: currentEntry.lunchBreakHours,
-				...{ [field]: value },
-			};
-
-			// Recalculate hours based on start time, end time and lunch break
-			updatedEntry.hours = calculateHours(
-				updatedEntry.startTime,
-				updatedEntry.endTime,
-				updatedEntry.lunchBreakHours,
-			);
-
-			newEntries[day] = updatedEntry;
-		}
-
-		setTimeEntries(newEntries);
-		onTimeEntryChange?.(newEntries, day);
-	};
-
-	const handleLunchBreakChange = (day: string, value: string) => {
-		const lunchBreakHours = Number.parseFloat(value) || 0;
-		const newEntries: Record<string, TimeEntry> = { ...timeEntries };
-
-		if (newEntries[day]) {
-			const currentEntry = newEntries[day];
-			const updatedEntry: TimeEntry = {
-				hours: currentEntry.hours,
-				isDayOff: currentEntry.isDayOff,
-				startTime: currentEntry.startTime,
-				endTime: currentEntry.endTime,
-				lunchBreakHours: lunchBreakHours,
-			};
-
-			// Recalculate hours
-			updatedEntry.hours = calculateHours(
-				updatedEntry.startTime,
-				updatedEntry.endTime,
-				updatedEntry.lunchBreakHours,
-			);
-
-			newEntries[day] = updatedEntry;
-		}
-
-		setTimeEntries(newEntries);
-		onTimeEntryChange?.(newEntries, day);
-	};
-
-	const handleDayOffToggle = (day: string, isDayOff: boolean) => {
-		const newEntries: Record<string, TimeEntry> = { ...timeEntries };
-
-		// Ensure we have a valid entry for this day before updating
-		if (timeEntries[day]) {
-			newEntries[day] = {
-				...timeEntries[day],
-				isDayOff,
-				// If marking as day off, reset hours to 0
-				hours: isDayOff ? 0 : timeEntries[day].hours,
-			};
-		}
-
-		setTimeEntries(newEntries);
-		onTimeEntryChange?.(newEntries, day);
-	};
-
-	// Apply default hours for all workdays based on settings
-	const applyDefaultHours = () => {
-		const newEntries = { ...timeEntries };
-
-		for (const { key } of DAYS) {
-			// Skip days off
-			if (newEntries[key]?.isDayOff) {
-				continue;
-			}
-
-			// Use day-specific default settings if available
-			const daySetting = defaultDaySettings[key];
-			if (daySetting && newEntries[key]) {
-				const currentEntry = newEntries[key];
-				newEntries[key] = {
-					...currentEntry,
-					startTime: daySetting.defaultStartTime || currentEntry.startTime,
-					endTime: daySetting.defaultEndTime || currentEntry.endTime,
-					isDayOff: currentEntry.isDayOff,
-				};
-
-				// Recalculate hours
-				if (newEntries[key]) {
-					newEntries[key].hours = calculateHours(
-						newEntries[key].startTime,
-						newEntries[key].endTime,
-						newEntries[key].lunchBreakHours,
-					);
-				}
-			}
-		}
-
-		setTimeEntries(newEntries);
-		onTimeEntryChange?.(newEntries);
-	};
-
-	// Fill hours to meet target hours
-	const fillTargetHours = () => {
-		// Calculate current total hours
-		const currentTotal = Object.values(timeEntries).reduce(
-			(sum, entry) => (entry.isDayOff ? sum : sum + entry.hours),
-			0,
-		);
-
-		// If we already met or exceeded target, no need to adjust
-		if (currentTotal >= targetHours) {
-			return;
-		}
-
-		// Calculate remaining hours needed
-		const remainingHours = targetHours - currentTotal;
-
-		// Count how many workdays we have
-		const workdayCount = Object.values(timeEntries).filter(
-			(entry) => !entry.isDayOff,
-		).length;
-
-		if (workdayCount === 0) {
-			return; // No workdays to distribute hours to
-		}
-
-		// Distribute remaining hours evenly among workdays
-		const hoursPerDay = remainingHours / workdayCount;
-		const newEntries = { ...timeEntries };
-
-		// For each workday, adjust end time to add the required hours
-		for (const [day, entry] of Object.entries(newEntries)) {
-			if (entry.isDayOff) continue;
-
-			// Calculate new end time by adding hoursPerDay
-			const startParts = entry.startTime.split(":").map(Number);
-			const startHour = startParts[0] || 0;
-			const startMinute = startParts[1] || 0;
-
-			// Convert start time to minutes, add work time and lunch break
-			const startTimeInMinutes = startHour * 60 + startMinute;
-			const workTimeInMinutes = (entry.hours + hoursPerDay) * 60;
-			const lunchBreakInMinutes = entry.lunchBreakHours * 60;
-
-			// Calculate new end time in minutes
-			const endTimeInMinutes =
-				startTimeInMinutes + workTimeInMinutes + lunchBreakInMinutes;
-
-			// Convert back to hours and minutes
-			const endHours = Math.floor(endTimeInMinutes / 60);
-			const endMinutes = Math.round(endTimeInMinutes % 60);
-
-			// Format as HH:MM
-			const newEndTime = `${endHours.toString().padStart(2, "0")}:${endMinutes
-				.toString()
-				.padStart(2, "0")}`;
-
-			// Update the entry
-			entry.endTime = newEndTime;
-			entry.hours = calculateHours(
-				entry.startTime,
-				entry.endTime,
-				entry.lunchBreakHours,
-			);
-		}
-
-		setTimeEntries(newEntries);
-		onTimeEntryChange?.(newEntries);
-	};
-
-	// Open day settings dialog
-	const openDaySettings = (day: string) => {
-		setEditingDay(day);
-		setIsDialogOpen(true);
-	};
-
-	// Save day settings
-	const saveDaySettings = (settings: DaySettings) => {
-		if (editingDay && settings) {
-			onDaySettingsChange?.(editingDay, settings);
-			setIsDialogOpen(false);
-			setEditingDay(null);
-		}
-	};
-
-	// Calculate total hours
-	const totalHours = Object.values(timeEntries).reduce(
-		(sum, entry) => sum + entry.hours,
-		0,
-	);
+	const {
+		editingDay,
+		isDialogOpen,
+		openDaySettings,
+		saveDaySettings,
+		closeDialog,
+	} = useDaySettingsDialog({
+		onDaySettingsChange,
+	});
 
 	// Format for target vs. actual hours display
 	const hoursDisplay = `${formatHours(totalHours)} / ${formatHours(
@@ -555,10 +271,7 @@ export function WeeklyTimeEntry({
 			{editingDay && (
 				<DaySettingsDialog
 					isOpen={isDialogOpen}
-					onClose={() => {
-						setIsDialogOpen(false);
-						setEditingDay(null);
-					}}
+					onClose={closeDialog}
 					day={editingDay}
 					daySettings={
 						defaultDaySettings[editingDay] || {

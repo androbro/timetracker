@@ -1,9 +1,16 @@
 {
+	"java.configuration.updateBuildConfiguration": "automatic",
 	"editor.formatOnSave": true,
+	"editor.formatOnPaste": false,
+	"editor.formatOnType": false,
+	"editor.formatOnSaveMode": "file",
 	"editor.codeActionsOnSave": {
 		"source.fixAll.biome": "explicit",
-		"source.organizeImports.biome": "explicit"
+		"source.organizeImports.biome": "explicit",
+		"source.removeUnusedImports": "explicit"
 	},
+	"editor.inlayHints.enabled": "on",
+	"files.autoSave": "onFocusChange",
 	"[javascript]": {
 		"editor.defaultFormatter": "biomejs.biome"
 	},
@@ -16,6 +23,21 @@
 	"[typescriptreact]": {
 		"editor.defaultFormatter": "biomejs.biome"
 	},
+	"[json]": {
+		"editor.defaultFormatter": "vscode.json-language-features"
+	},
+	"[csharp]": {
+		"editor.defaultFormatter": "ms-dotnettools.csharp",
+		"editor.formatOnSave": true,
+		"editor.codeActionsOnSave": {
+			"source.organizeImports": "always",
+			"source.fixAll": "always"
+		}
+	},
+	"csharp.format.enable": true,
+	"dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
+	"dotnet.server.useOmnisharp": true,
+	"omnisharp.enableEditorConfigSupport": true,
 	"files.associations": {
 		"*.css": "tailwindcss"
 	},
