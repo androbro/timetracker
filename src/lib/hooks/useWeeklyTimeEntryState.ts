@@ -128,12 +128,26 @@ export function useWeeklyTimeEntryState({
 		() => mergeEntries(),
 	);
 
+	// Track changes for onTimeEntryChange callback
+	const [changedEntry, setChangedEntry] = useState<{
+		entries: Record<string, TimeEntry>;
+		day?: string;
+	} | null>(null);
+
 	// Update timeEntries only when inputs meaningfully change
 	// We'll use a ref to track if this is the first render to avoid unnecessary updates
 	useEffect(() => {
 		// Only update when initialEntries or defaultDaySettings change
 		setTimeEntries(mergeEntries());
 	}, [mergeEntries]);
+
+	// Handle onTimeEntryChange in a separate effect
+	useEffect(() => {
+		if (changedEntry && onTimeEntryChange) {
+			onTimeEntryChange(changedEntry.entries, changedEntry.day);
+			setChangedEntry(null);
+		}
+	}, [changedEntry, onTimeEntryChange]);
 
 	// Handlers for time entry changes
 	const handleTimeChange = useCallback(
@@ -162,11 +176,12 @@ export function useWeeklyTimeEntryState({
 					newEntries[day] = updatedEntry;
 				}
 
-				onTimeEntryChange?.(newEntries, day);
+				// Moved to useEffect
+				setChangedEntry({ entries: newEntries, day });
 				return newEntries;
 			});
 		},
-		[calculateHours, onTimeEntryChange],
+		[calculateHours],
 	);
 
 	const handleLunchBreakChange = useCallback(
@@ -195,34 +210,33 @@ export function useWeeklyTimeEntryState({
 					newEntries[day] = updatedEntry;
 				}
 
-				onTimeEntryChange?.(newEntries, day);
+				// Moved to useEffect
+				setChangedEntry({ entries: newEntries, day });
 				return newEntries;
 			});
 		},
-		[calculateHours, onTimeEntryChange],
+		[calculateHours],
 	);
 
-	const handleDayOffToggle = useCallback(
-		(day: string, isDayOff: boolean) => {
-			setTimeEntries((prevEntries) => {
-				const newEntries = { ...prevEntries };
+	const handleDayOffToggle = useCallback((day: string, isDayOff: boolean) => {
+		setTimeEntries((prevEntries) => {
+			const newEntries = { ...prevEntries };
 
-				// Ensure we have a valid entry for this day before updating
-				if (prevEntries[day]) {
-					newEntries[day] = {
-						...prevEntries[day],
-						isDayOff,
-						// If marking as day off, reset hours to 0
-						hours: isDayOff ? 0 : prevEntries[day].hours,
-					};
-				}
+			// Ensure we have a valid entry for this day before updating
+			if (prevEntries[day]) {
+				newEntries[day] = {
+					...prevEntries[day],
+					isDayOff,
+					// If marking as day off, reset hours to 0
+					hours: isDayOff ? 0 : prevEntries[day].hours,
+				};
+			}
 
-				onTimeEntryChange?.(newEntries, day);
-				return newEntries;
-			});
-		},
-		[onTimeEntryChange],
-	);
+			// Moved to useEffect
+			setChangedEntry({ entries: newEntries, day });
+			return newEntries;
+		});
+	}, []);
 
 	// Apply default hours for all workdays based on settings
 	const applyDefaultHours = useCallback(() => {
@@ -257,10 +271,11 @@ export function useWeeklyTimeEntryState({
 				}
 			}
 
-			onTimeEntryChange?.(newEntries);
+			// Moved to useEffect
+			setChangedEntry({ entries: newEntries });
 			return newEntries;
 		});
-	}, [calculateHours, defaultDays, defaultDaySettings, onTimeEntryChange]);
+	}, [calculateHours, defaultDays, defaultDaySettings]);
 
 	// Fill hours to meet target hours
 	const fillTargetHours = useCallback(() => {
@@ -328,10 +343,11 @@ export function useWeeklyTimeEntryState({
 				);
 			}
 
-			onTimeEntryChange?.(newEntries);
+			// Moved to useEffect
+			setChangedEntry({ entries: newEntries });
 			return newEntries;
 		});
-	}, [calculateHours, targetHours, onTimeEntryChange]);
+	}, [calculateHours, targetHours]);
 
 	// Calculate total hours - memoize to avoid recalculation on every render
 	const totalHours = useMemo(
