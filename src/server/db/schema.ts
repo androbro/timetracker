@@ -67,6 +67,8 @@ export const daySettings = createTable(
 		defaultStartTime: t.time().notNull().default(sql`'09:00:00'`),
 		defaultEndTime: t.time().notNull().default(sql`'17:00:00'`),
 		defaultHours: t.integer().notNull().default(480), // in minutes, default 8 hours (480 min)
+		officeHoursStart: t.time().notNull().default(sql`'09:00:00'`), // Office hours start time
+		officeHoursEnd: t.time().notNull().default(sql`'17:00:00'`), // Office hours end time
 		createdAt: t.timestamp({ withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 		updatedAt: t.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
 	}),

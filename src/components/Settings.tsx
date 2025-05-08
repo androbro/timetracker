@@ -21,6 +21,8 @@ export interface DaySettings {
 	defaultStartTime: string;
 	defaultEndTime: string;
 	defaultHours: number;
+	officeHoursStart: string;
+	officeHoursEnd: string;
 }
 
 export interface TimeSettings {

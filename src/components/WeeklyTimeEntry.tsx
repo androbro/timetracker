@@ -563,7 +563,9 @@ export function WeeklyTimeEntry({
 						defaultDaySettings[editingDay] || {
 							defaultStartTime: "09:00",
 							defaultEndTime: "17:00",
-							defaultHours: 8
+							defaultHours: 8,
+							officeHoursStart: "09:00",
+							officeHoursEnd: "17:00"
 						}
 					}
 					onSave={saveDaySettings}

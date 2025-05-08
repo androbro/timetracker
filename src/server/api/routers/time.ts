@@ -70,6 +70,8 @@ export const timeRouter = createTRPCRouter({
 				defaultStartTime: string;
 				defaultEndTime: string;
 				defaultHours: number;
+				officeHoursStart: string;
+				officeHoursEnd: string;
 			}
 
 			// Convert to an object with day names as keys
@@ -79,6 +81,8 @@ export const timeRouter = createTRPCRouter({
 					defaultStartTime: setting.defaultStartTime,
 					defaultEndTime: setting.defaultEndTime,
 					defaultHours: setting.defaultHours / 60, // Convert minutes to hours for frontend
+					officeHoursStart: setting.officeHoursStart,
+					officeHoursEnd: setting.officeHoursEnd,
 				};
 			}
 
@@ -91,9 +95,11 @@ export const timeRouter = createTRPCRouter({
 			defaultStartTime: z.string(),
 			defaultEndTime: z.string(),
 			defaultHours: z.number(),
+			officeHoursStart: z.string(),
+			officeHoursEnd: z.string(),
 		}))
 		.mutation(async ({ ctx, input }) => {
-			const { dayName, defaultStartTime, defaultEndTime, defaultHours } = input;
+			const { dayName, defaultStartTime, defaultEndTime, defaultHours, officeHoursStart, officeHoursEnd } = input;
 
 			// Convert hours to minutes for storage
 			const defaultHoursMinutes = Math.round(defaultHours * 60);
@@ -109,6 +115,8 @@ export const timeRouter = createTRPCRouter({
 						defaultStartTime,
 						defaultEndTime,
 						defaultHours: defaultHoursMinutes,
+						officeHoursStart,
+						officeHoursEnd,
 					})
 					.where(eq(daySettings.dayName, dayName))
 					.returning();
@@ -119,6 +127,8 @@ export const timeRouter = createTRPCRouter({
 				defaultStartTime,
 				defaultEndTime,
 				defaultHours: defaultHoursMinutes,
+				officeHoursStart,
+				officeHoursEnd,
 			}).returning();
 		}),
 

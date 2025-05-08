@@ -67,27 +67,37 @@ export function TimeTracker() {
 			monday: {
 				defaultStartTime: "09:00",
 				defaultEndTime: "17:00",
-				defaultHours: 8
+				defaultHours: 8,
+				officeHoursStart: "09:00",
+				officeHoursEnd: "17:00"
 			},
 			tuesday: {
 				defaultStartTime: "09:00",
 				defaultEndTime: "17:00",
-				defaultHours: 8
+				defaultHours: 8,
+				officeHoursStart: "09:00",
+				officeHoursEnd: "17:00"
 			},
 			wednesday: {
 				defaultStartTime: "09:00",
 				defaultEndTime: "17:00",
-				defaultHours: 8
+				defaultHours: 8,
+				officeHoursStart: "09:00",
+				officeHoursEnd: "17:00"
 			},
 			thursday: {
 				defaultStartTime: "09:00",
 				defaultEndTime: "17:00",
-				defaultHours: 8
+				defaultHours: 8,
+				officeHoursStart: "09:00",
+				officeHoursEnd: "17:00"
 			},
 			friday: {
 				defaultStartTime: "09:00",
 				defaultEndTime: "17:00",
-				defaultHours: 8
+				defaultHours: 8,
+				officeHoursStart: "09:00",
+				officeHoursEnd: "14:00"
 			}
 		},
 		use24HourFormat: true,
@@ -314,7 +324,9 @@ export function TimeTracker() {
 			newDaySettings[day] = {
 				defaultStartTime: daySettings.defaultStartTime || "09:00",
 				defaultEndTime: daySettings.defaultEndTime || "17:00",
-				defaultHours: daySettings.defaultHours ?? 8
+				defaultHours: daySettings.defaultHours ?? 8,
+				officeHoursStart: daySettings.officeHoursStart || "09:00",
+				officeHoursEnd: daySettings.officeHoursEnd || "17:00"
 			};
 
 			return {
@@ -329,7 +341,9 @@ export function TimeTracker() {
 				dayName: day,
 				defaultStartTime: daySettings.defaultStartTime || "09:00",
 				defaultEndTime: daySettings.defaultEndTime || "17:00",
-				defaultHours: daySettings.defaultHours ?? 8
+				defaultHours: daySettings.defaultHours ?? 8,
+				officeHoursStart: daySettings.officeHoursStart || "09:00",
+				officeHoursEnd: daySettings.officeHoursEnd || "17:00"
 			});
 		} catch (error) {
 			console.error("Failed to save day settings:", error);

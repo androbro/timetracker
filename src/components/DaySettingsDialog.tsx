@@ -79,6 +79,27 @@ export function DaySettingsDialog({
 							use24HourFormat={use24HourFormat}
 						/>
 					</div>
+
+					<div className="mt-4 border-t pt-4">
+						<h3 className="mb-2 text-sm font-medium">Office Hours</h3>
+						<div className="grid grid-cols-2 gap-4">
+							<TimeInput
+								label="Office Hours Start"
+								value={tempSettings.officeHoursStart || "09:00"}
+								onChange={(value) =>
+									handleSettingChange("officeHoursStart", value)
+								}
+								use24HourFormat={use24HourFormat}
+							/>
+							<TimeInput
+								label="Office Hours End"
+								value={tempSettings.officeHoursEnd || "17:00"}
+								onChange={(value) => handleSettingChange("officeHoursEnd", value)}
+								use24HourFormat={use24HourFormat}
+							/>
+						</div>
+					</div>
+
 					<div className="flex justify-end space-x-2 pt-4">
 						<Button
 							variant="outline"
