@@ -1,7 +1,7 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { format } from "date-fns";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 
 interface WorkDay {
 	id: number;
@@ -40,14 +40,14 @@ export function WeeklyView({ week }: WeeklyViewProps) {
 				<div className="space-y-4">
 					<div className="grid grid-cols-2 gap-4">
 						<div className="rounded-lg bg-muted p-4">
-							<p className="text-sm font-medium">Total Hours Worked</p>
-							<p className="text-2xl font-bold">
+							<p className="font-medium text-sm">Total Hours Worked</p>
+							<p className="font-bold text-2xl">
 								{totalHoursWorked.toFixed(2)}h
 							</p>
 						</div>
 						<div className="rounded-lg bg-muted p-4">
-							<p className="text-sm font-medium">Remaining Hours</p>
-							<p className="text-2xl font-bold">{remainingHours.toFixed(2)}h</p>
+							<p className="font-medium text-sm">Remaining Hours</p>
+							<p className="font-bold text-2xl">{remainingHours.toFixed(2)}h</p>
 						</div>
 					</div>
 

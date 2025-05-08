@@ -1,16 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { api } from "~/trpc/react";
-import { WeeklyTimeEntry } from "~/components/WeeklyTimeEntry";
+import { Clock, Settings as SettingsIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { EarlyDepartureScheduler } from "~/components/EarlyDepartureScheduler";
 import {
+	type DaySettings,
 	Settings,
 	type TimeSettings,
-	type DaySettings
 } from "~/components/Settings";
+import { WeeklyTimeEntry } from "~/components/WeeklyTimeEntry";
+import type { TimeEntry as ImportedTimeEntry } from "~/components/types/timeEntryTypes";
 import { Button } from "~/components/ui/button";
-import { Settings as SettingsIcon } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { api } from "~/trpc/react";
 
 interface WorkWeek {
 	id: number;
@@ -44,6 +47,7 @@ interface WorkDayRecord {
 	updatedAt?: string | Date;
 }
 
+// Local time entry interface
 interface TimeEntry {
 	hours: number;
 	isDayOff: boolean;
@@ -58,6 +62,7 @@ export function TimeTracker() {
 	const { data: userSettings } = api.time.getUserSettings.useQuery();
 	const updateUserSettings = api.time.updateUserSettings.useMutation();
 	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+	const [activeTab, setActiveTab] = useState<string>("weekly-hours");
 
 	// Default settings with day-specific defaults
 	const defaultTimeSettings: TimeSettings = {
@@ -69,39 +74,39 @@ export function TimeTracker() {
 				defaultEndTime: "17:00",
 				defaultHours: 8,
 				officeHoursStart: "09:00",
-				officeHoursEnd: "17:00"
+				officeHoursEnd: "17:00",
 			},
 			tuesday: {
 				defaultStartTime: "09:00",
 				defaultEndTime: "17:00",
 				defaultHours: 8,
 				officeHoursStart: "09:00",
-				officeHoursEnd: "17:00"
+				officeHoursEnd: "17:00",
 			},
 			wednesday: {
 				defaultStartTime: "09:00",
 				defaultEndTime: "17:00",
 				defaultHours: 8,
 				officeHoursStart: "09:00",
-				officeHoursEnd: "17:00"
+				officeHoursEnd: "17:00",
 			},
 			thursday: {
 				defaultStartTime: "09:00",
 				defaultEndTime: "17:00",
 				defaultHours: 8,
 				officeHoursStart: "09:00",
-				officeHoursEnd: "17:00"
+				officeHoursEnd: "17:00",
 			},
 			friday: {
 				defaultStartTime: "09:00",
 				defaultEndTime: "17:00",
 				defaultHours: 8,
 				officeHoursStart: "09:00",
-				officeHoursEnd: "14:00"
-			}
+				officeHoursEnd: "14:00",
+			},
 		},
 		use24HourFormat: true,
-		showWeekends: false
+		showWeekends: false,
 	};
 
 	const [settings, setSettings] = useState<TimeSettings>(defaultTimeSettings);
@@ -114,8 +119,8 @@ export function TimeTracker() {
 				...prev,
 				defaultDaySettings: {
 					...prev.defaultDaySettings,
-					...savedDaySettings
-				}
+					...savedDaySettings,
+				},
 			}));
 		}
 	}, [savedDaySettings]);
@@ -124,7 +129,7 @@ export function TimeTracker() {
 	useEffect(() => {
 		if (userSettings) {
 			const updatedSettings: Partial<TimeSettings> = {
-				use24HourFormat: userSettings.use24HourFormat
+				use24HourFormat: userSettings.use24HourFormat,
 			};
 
 			// Only set showWeekends if it's defined in the database
@@ -134,7 +139,7 @@ export function TimeTracker() {
 
 			setSettings((prev) => ({
 				...prev,
-				...updatedSettings
+				...updatedSettings,
 			}));
 		}
 	}, [userSettings]);
@@ -183,7 +188,7 @@ export function TimeTracker() {
 			setSettings((prev) => ({
 				...prev,
 				targetHours: currentWeek.targetHours,
-				breakDuration: currentWeek.breakDuration
+				breakDuration: currentWeek.breakDuration,
 			}));
 
 			// Convert current week data to time entries format
@@ -199,7 +204,7 @@ export function TimeTracker() {
 
 				entries[dayName] = {
 					hours: day.totalHours / 60, // Convert minutes to hours
-					isDayOff: workDay.isDayOff ?? false
+					isDayOff: workDay.isDayOff ?? false,
 				};
 			}
 			setTimeEntries(entries);
@@ -208,7 +213,7 @@ export function TimeTracker() {
 
 	const handleTimeEntryChange = async (
 		entries: Record<string, TimeEntry>,
-		changedDay?: string
+		changedDay?: string,
 	) => {
 		setTimeEntries(entries);
 
@@ -221,7 +226,7 @@ export function TimeTracker() {
 				weekNumber,
 				year,
 				targetHours: settings.targetHours,
-				breakDuration: settings.breakDuration
+				breakDuration: settings.breakDuration,
 			});
 
 			if (week && week.length > 0 && week[0]) {
@@ -249,7 +254,7 @@ export function TimeTracker() {
 						startTime,
 						endTime,
 						totalHours: totalMinutes, // Store as minutes
-						isDayOff: entries[day].isDayOff
+						isDayOff: entries[day].isDayOff,
 					});
 				}
 			}
@@ -265,7 +270,7 @@ export function TimeTracker() {
 
 				// Find the existing day record to get current start/end times
 				const existingDay = currentWeek.workDays.find(
-					(d) => new Date(d.date).toDateString() === date.toDateString()
+					(d) => new Date(d.date).toDateString() === date.toDateString(),
 				);
 
 				// Use existing times or default times from settings
@@ -285,7 +290,7 @@ export function TimeTracker() {
 						startTime,
 						endTime,
 						totalHours: totalMinutes, // Store as minutes
-						isDayOff: entries[day].isDayOff
+						isDayOff: entries[day].isDayOff,
 					});
 				} catch (error) {
 					console.error(`Error updating ${day}:`, error);
@@ -306,14 +311,14 @@ export function TimeTracker() {
 		) {
 			updateUserSettings.mutate({
 				use24HourFormat: newSettings.use24HourFormat,
-				showWeekends: newSettings.showWeekends
+				showWeekends: newSettings.showWeekends,
 			});
 		}
 	};
 
 	const handleDaySettingsChange = async (
 		day: string,
-		daySettings: DaySettings
+		daySettings: DaySettings,
 	) => {
 		// Update local state first for immediate UI feedback
 		setSettings((prev) => {
@@ -326,12 +331,12 @@ export function TimeTracker() {
 				defaultEndTime: daySettings.defaultEndTime || "17:00",
 				defaultHours: daySettings.defaultHours ?? 8,
 				officeHoursStart: daySettings.officeHoursStart || "09:00",
-				officeHoursEnd: daySettings.officeHoursEnd || "17:00"
+				officeHoursEnd: daySettings.officeHoursEnd || "17:00",
 			};
 
 			return {
 				...prev,
-				defaultDaySettings: newDaySettings
+				defaultDaySettings: newDaySettings,
 			};
 		});
 
@@ -343,7 +348,7 @@ export function TimeTracker() {
 				defaultEndTime: daySettings.defaultEndTime || "17:00",
 				defaultHours: daySettings.defaultHours ?? 8,
 				officeHoursStart: daySettings.officeHoursStart || "09:00",
-				officeHoursEnd: daySettings.officeHoursEnd || "17:00"
+				officeHoursEnd: daySettings.officeHoursEnd || "17:00",
 			});
 		} catch (error) {
 			console.error("Failed to save day settings:", error);
@@ -351,15 +356,61 @@ export function TimeTracker() {
 		}
 	};
 
+	// Helper to convert local TimeEntry to the full TimeEntry type expected by EarlyDepartureScheduler
+	const enhanceTimeEntries = (
+		entries: Record<string, TimeEntry>,
+	): Record<string, ImportedTimeEntry> => {
+		const result: Record<string, ImportedTimeEntry> = {};
+
+		for (const [day, entry] of Object.entries(entries)) {
+			// Get default settings for the day or use generic defaults
+			const daySettings = settings.defaultDaySettings[day];
+
+			result[day] = {
+				...entry,
+				startTime: daySettings?.defaultStartTime || "09:00",
+				endTime: daySettings?.defaultEndTime || "17:00",
+				lunchBreakHours: 0.5, // Default lunch break
+			};
+		}
+
+		return result;
+	};
+
 	return (
-		<div className="grid gap-6">
-			{isLoading || !userSettings ? (
-				<div>Loading...</div>
-			) : (
-				<>
+		<div className="w-full max-w-5xl">
+			<Tabs
+				defaultValue="weekly-hours"
+				value={activeTab}
+				onValueChange={setActiveTab}
+				className="w-full"
+			>
+				<div className="mb-6 flex items-center justify-between">
+					<TabsList>
+						<TabsTrigger value="weekly-hours" className="gap-2">
+							<Clock className="h-4 w-4" />
+							Weekly Hours
+						</TabsTrigger>
+						<TabsTrigger value="early-departure" className="gap-2">
+							<Clock className="h-4 w-4" />
+							Early Departure
+						</TabsTrigger>
+					</TabsList>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => setIsSettingsOpen(true)}
+						className="ml-auto h-8"
+					>
+						<SettingsIcon className="mr-2 h-4 w-4" />
+						Settings
+					</Button>
+				</div>
+
+				<TabsContent value="weekly-hours">
 					<WeeklyTimeEntry
-						initialEntries={timeEntries}
 						onTimeEntryChange={handleTimeEntryChange}
+						initialEntries={timeEntries}
 						targetHours={settings.targetHours}
 						defaultDaySettings={settings.defaultDaySettings}
 						onDaySettingsChange={handleDaySettingsChange}
@@ -367,21 +418,43 @@ export function TimeTracker() {
 						showWeekends={settings.showWeekends}
 						onOpenSettings={() => setIsSettingsOpen(true)}
 					/>
-					<Settings
-						initialSettings={settings}
-						onSettingsChange={handleSettingsChange}
-						open={isSettingsOpen}
-						onOpenChange={setIsSettingsOpen}
+				</TabsContent>
+
+				<TabsContent value="early-departure">
+					<EarlyDepartureScheduler
+						timeEntries={enhanceTimeEntries(timeEntries)}
+						targetHours={settings.targetHours}
+						daySettings={settings.defaultDaySettings}
+						onTimeEntriesChange={(entries) => {
+							// Convert back to our local type before updating
+							const simplifiedEntries: Record<string, TimeEntry> = {};
+							for (const [day, entry] of Object.entries(entries)) {
+								simplifiedEntries[day] = {
+									hours: entry.hours,
+									isDayOff: entry.isDayOff,
+								};
+							}
+							handleTimeEntryChange(simplifiedEntries);
+						}}
+						use24HourFormat={settings.use24HourFormat}
+						showWeekends={settings.showWeekends}
 					/>
-				</>
-			)}
+				</TabsContent>
+			</Tabs>
+
+			<Settings
+				initialSettings={settings}
+				onSettingsChange={handleSettingsChange}
+				open={isSettingsOpen}
+				onOpenChange={setIsSettingsOpen}
+			/>
 		</div>
 	);
 }
 
 function getWeekNumber(date: Date): number {
 	const d = new Date(
-		Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
+		Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
 	);
 	const dayNum = d.getUTCDay() || 7;
 	d.setUTCDate(d.getUTCDate() + 4 - dayNum);
@@ -397,7 +470,7 @@ function getDayNumber(day: string): number {
 		wednesday: 3,
 		thursday: 4,
 		friday: 5,
-		saturday: 6
+		saturday: 6,
 	};
 	return days[day] ?? 0;
 }
