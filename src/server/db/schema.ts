@@ -3,16 +3,7 @@
 
 import { sql } from "drizzle-orm";
 import { relations } from "drizzle-orm";
-import {
-	boolean,
-	index,
-	integer,
-	pgTableCreator,
-	text,
-	time,
-	timestamp,
-	varchar,
-} from "drizzle-orm/pg-core";
+import { index, pgTableCreator } from "drizzle-orm/pg-core";
 
 /**
  * This is an example of how to use the multi-proj ect schema feature of Drizzle ORM. Use the same
@@ -55,6 +46,7 @@ export const workDays = createTable(
 		startTime: t.time().notNull(),
 		endTime: t.time().notNull(),
 		totalHours: t.integer().notNull(), // in minutes
+		lunchBreakMinutes: t.integer().default(30).notNull(), // Lunch break duration in minutes
 		isDayOff: t.boolean().default(false).notNull(), // Day off (like weekend)
 		createdAt: t
 			.timestamp({ withTimezone: true })

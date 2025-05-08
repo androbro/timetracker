@@ -4,12 +4,27 @@ export const calculateHours = (
 	endTime: string,
 	lunchBreakHours: number,
 ): number => {
-	if (!startTime || !endTime) return 0;
+	console.log(`[timeUtils] calculateHours called with:`, {
+		startTime,
+		endTime,
+		lunchBreakHours,
+		caller: new Error().stack,
+	});
+
+	if (!startTime || !endTime) {
+		console.log(`[timeUtils] calculateHours early return - missing times`);
+		return 0;
+	}
 
 	const startParts = startTime.split(":").map(Number);
 	const endParts = endTime.split(":").map(Number);
 
-	if (startParts.length < 2 || endParts.length < 2) return 0;
+	if (startParts.length < 2 || endParts.length < 2) {
+		console.log(
+			`[timeUtils] calculateHours early return - invalid time format`,
+		);
+		return 0;
+	}
 
 	const startHour = startParts[0] || 0;
 	const startMinute = startParts[1] || 0;
@@ -23,7 +38,7 @@ export const calculateHours = (
 	const workMinutes = endMinutes - startMinutes - lunchBreakHours * 60;
 
 	const hours = Math.max(0, workMinutes / 60);
-	console.log("hours", hours);
+	console.log("[timeUtils] Hours calculated:", hours);
 
 	// Convert back to hours with decimal
 	return hours;

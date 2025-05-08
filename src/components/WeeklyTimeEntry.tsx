@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 
+import { useEffect, useRef } from "react";
 import { DaySettingsDialog } from "./DaySettingsDialog";
 // Import extracted components and utilities
 import { TimeInput } from "./TimeInput";
@@ -34,6 +35,12 @@ export function WeeklyTimeEntry({
 }: WeeklyTimeEntryProps) {
 	// Use the extracted hooks
 	const { formatHours } = useTimeUtils();
+	const initialCalculationDone = useRef(false);
+
+	console.log(
+		"[WeeklyTimeEntry] Rendering with initialEntries:",
+		initialEntries,
+	);
 
 	const {
 		timeEntries,
@@ -49,6 +56,30 @@ export function WeeklyTimeEntry({
 		targetHours,
 		onTimeEntryChange,
 	});
+
+	console.log("[WeeklyTimeEntry] Calculated timeEntries:", timeEntries);
+
+	// Ensure calculated hours are persisted to the database
+	useEffect(() => {
+		// Only run once after initial calculations to avoid loops
+		if (
+			!initialCalculationDone.current &&
+			Object.keys(timeEntries).length > 0
+		) {
+			console.log(
+				"[WeeklyTimeEntry] First calculation complete, preparing to persist",
+			);
+			initialCalculationDone.current = true;
+
+			// Delay to ensure all calculations are complete
+			const timer = setTimeout(() => {
+				console.log("[WeeklyTimeEntry] Persisting calculations to database");
+				onTimeEntryChange?.(timeEntries);
+			}, 500);
+
+			return () => clearTimeout(timer);
+		}
+	}, [timeEntries, onTimeEntryChange]);
 
 	const {
 		editingDay,

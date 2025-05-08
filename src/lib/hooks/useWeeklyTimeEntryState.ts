@@ -21,6 +21,11 @@ export function useWeeklyTimeEntryState({
 }: UseWeeklyTimeEntryStateProps) {
 	const { calculateHours } = useTimeUtils();
 
+	console.log("[useWeeklyTimeEntryState] Initializing with:", {
+		initialEntries,
+		hasInitialEntries: Object.keys(initialEntries).length > 0,
+	});
+
 	// Default days configuration - memoize to avoid recreating on every render
 	const defaultDays = useMemo<Record<DayKey, TimeEntry>>(
 		() => ({
@@ -80,6 +85,7 @@ export function useWeeklyTimeEntryState({
 	// Function to merge initial entries with defaults and apply day settings
 	// Use a more stable dependency array with JSON stringify for objects
 	const mergeEntries = useCallback(() => {
+		console.log("[useWeeklyTimeEntryState] mergeEntries called");
 		// Start with default days
 		const merged = { ...defaultDays };
 
@@ -91,11 +97,24 @@ export function useWeeklyTimeEntryState({
 					settings.defaultStartTime || merged[dayKey].startTime;
 				merged[dayKey].endTime =
 					settings.defaultEndTime || merged[dayKey].endTime;
-				merged[dayKey].hours = calculateHours(
+
+				const calculatedHours = calculateHours(
 					merged[dayKey].startTime,
 					merged[dayKey].endTime,
 					merged[dayKey].lunchBreakHours,
 				);
+
+				console.log(
+					`[useWeeklyTimeEntryState] Applied default settings for ${dayKey}:`,
+					{
+						startTime: merged[dayKey].startTime,
+						endTime: merged[dayKey].endTime,
+						lunchBreakHours: merged[dayKey].lunchBreakHours,
+						calculatedHours,
+					},
+				);
+
+				merged[dayKey].hours = calculatedHours;
 			}
 		}
 
@@ -105,6 +124,11 @@ export function useWeeklyTimeEntryState({
 				// Safe to cast since we've checked day is in defaultDays
 				const dayKey = day as DayKey;
 				const defaultEntry = merged[dayKey];
+
+				console.log(
+					`[useWeeklyTimeEntryState] Processing initialEntry for ${dayKey}:`,
+					entry,
+				);
 
 				merged[dayKey] = {
 					hours:
@@ -118,14 +142,24 @@ export function useWeeklyTimeEntryState({
 					lunchBreakHours:
 						entry.lunchBreakHours || defaultEntry.lunchBreakHours,
 				};
+
+				console.log(
+					`[useWeeklyTimeEntryState] Merged entry for ${dayKey}:`,
+					merged[dayKey],
+				);
 			}
 		}
 
+		console.log("[useWeeklyTimeEntryState] Final merged entries:", merged);
 		return merged;
 	}, [defaultDays, defaultDaySettings, initialEntries, calculateHours]);
 
 	const [timeEntries, setTimeEntries] = useState<Record<string, TimeEntry>>(
-		() => mergeEntries(),
+		() => {
+			const initial = mergeEntries();
+			console.log("[useWeeklyTimeEntryState] Initial state set:", initial);
+			return initial;
+		},
 	);
 
 	// Track changes for onTimeEntryChange callback
@@ -137,13 +171,25 @@ export function useWeeklyTimeEntryState({
 	// Update timeEntries only when inputs meaningfully change
 	// We'll use a ref to track if this is the first render to avoid unnecessary updates
 	useEffect(() => {
+		console.log(
+			"[useWeeklyTimeEntryState] Dependencies changed, recalculating merged entries",
+		);
 		// Only update when initialEntries or defaultDaySettings change
-		setTimeEntries(mergeEntries());
+		const newEntries = mergeEntries();
+		console.log(
+			"[useWeeklyTimeEntryState] Setting new entries from dependencies:",
+			newEntries,
+		);
+		setTimeEntries(newEntries);
 	}, [mergeEntries]);
 
 	// Handle onTimeEntryChange in a separate effect
 	useEffect(() => {
 		if (changedEntry && onTimeEntryChange) {
+			console.log(
+				"[useWeeklyTimeEntryState] Calling onTimeEntryChange with:",
+				changedEntry,
+			);
 			onTimeEntryChange(changedEntry.entries, changedEntry.day);
 			setChangedEntry(null);
 		}
@@ -152,6 +198,10 @@ export function useWeeklyTimeEntryState({
 	// Handlers for time entry changes
 	const handleTimeChange = useCallback(
 		(day: string, field: "startTime" | "endTime", value: string) => {
+			console.log(
+				`[useWeeklyTimeEntryState] handleTimeChange: ${day}.${field} = ${value}`,
+			);
+
 			setTimeEntries((prevEntries) => {
 				const newEntries = { ...prevEntries };
 
@@ -171,6 +221,17 @@ export function useWeeklyTimeEntryState({
 						updatedEntry.startTime,
 						updatedEntry.endTime,
 						updatedEntry.lunchBreakHours,
+					);
+
+					console.log(
+						`[useWeeklyTimeEntryState] Recalculated hours for ${day}:`,
+						{
+							before: currentEntry.hours,
+							after: updatedEntry.hours,
+							startTime: updatedEntry.startTime,
+							endTime: updatedEntry.endTime,
+							lunchBreakHours: updatedEntry.lunchBreakHours,
+						},
 					);
 
 					newEntries[day] = updatedEntry;

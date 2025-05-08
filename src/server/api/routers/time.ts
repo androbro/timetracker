@@ -48,6 +48,7 @@ export const timeRouter = createTRPCRouter({
 				startTime: z.string(),
 				endTime: z.string(),
 				totalHours: z.number(),
+				lunchBreakMinutes: z.number().default(30),
 				isDayOff: z.boolean().default(false),
 			}),
 		)

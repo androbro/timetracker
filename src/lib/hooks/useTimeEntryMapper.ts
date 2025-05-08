@@ -21,9 +21,9 @@ export function useTimeEntryMapper() {
 
 			result[day] = {
 				...entry,
-				startTime: daySettings?.defaultStartTime || "09:00",
-				endTime: daySettings?.defaultEndTime || "17:00",
-				lunchBreakHours: settings.breakDuration / 60, // Convert minutes to hours
+				startTime: entry.startTime || daySettings?.defaultStartTime || "09:00",
+				endTime: entry.endTime || daySettings?.defaultEndTime || "17:00",
+				lunchBreakHours: entry.lunchBreakHours || settings.breakDuration / 60, // Convert minutes to hours
 			};
 		}
 
@@ -42,6 +42,9 @@ export function useTimeEntryMapper() {
 			simplifiedEntries[day] = {
 				hours: entry.hours,
 				isDayOff: entry.isDayOff,
+				startTime: entry.startTime,
+				endTime: entry.endTime,
+				lunchBreakHours: entry.lunchBreakHours,
 			};
 		}
 
