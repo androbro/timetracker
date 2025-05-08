@@ -30,6 +30,7 @@ export function useWeeklyTimeEntryState({
 				startTime: existingEntry?.startTime ?? "",
 				endTime: existingEntry?.endTime ?? "",
 				lunchBreakHours: existingEntry?.lunchBreakHours ?? 0.5,
+				verified: existingEntry?.verified ?? false,
 			};
 		},
 		[],
@@ -207,6 +208,32 @@ export function useWeeklyTimeEntryState({
 		[onTimeEntryChange, createDefaultTimeEntry],
 	);
 
+	// Handle verification toggle for a specific day
+	const handleVerifyToggle = useCallback(
+		(day: string, verified: boolean) => {
+			setTimeEntries((prev) => {
+				const entry = prev[day] || createDefaultTimeEntry();
+
+				// Update the entry
+				const updatedEntry: TimeEntry = {
+					...entry,
+					verified,
+				};
+
+				const result: Record<string, TimeEntry> = {
+					...prev,
+					[day]: updatedEntry,
+				};
+
+				// Notify parent about the change
+				onTimeEntryChange?.(result, day);
+
+				return result;
+			});
+		},
+		[onTimeEntryChange, createDefaultTimeEntry],
+	);
+
 	/**
 	 * Apply default hours to days based on settings
 	 */
@@ -314,6 +341,7 @@ export function useWeeklyTimeEntryState({
 		handleTimeChange,
 		handleLunchBreakChange,
 		handleDayOffToggle,
+		handleVerifyToggle,
 		applyDefaultHours,
 		fillTargetHours,
 	};

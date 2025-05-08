@@ -2,6 +2,7 @@
 
 import { Clock, Info } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { isDayInPast } from "~/lib/hooks/useDateHelpers";
 import type { DaySettings } from "./Settings";
 import { TimeInput } from "./TimeInput";
 import { DAYS, type DayKey, type TimeEntry } from "./types/timeEntryTypes";
@@ -140,33 +141,59 @@ export function EarlyDepartureScheduler({
 		visibleDays,
 	]);
 
+	// Check if selected day is in the past
+	const isSelectedDayInPast = useMemo(() => {
+		return isDayInPast(selectedDay);
+	}, [selectedDay]);
+
+	// Check if selected day is verified
+	const isSelectedDayVerified = useMemo(() => {
+		return timeEntries[selectedDay]?.verified || false;
+	}, [timeEntries, selectedDay]);
+
+	// Check if selected day can be modified (not past and not verified)
+	const canModifySelectedDay = useMemo(() => {
+		return !isSelectedDayInPast && !isSelectedDayVerified;
+	}, [isSelectedDayInPast, isSelectedDayVerified]);
+
 	// Memoize other work days to prevent unnecessary recalculations
+	// Filter out days in the past and verified days
 	const otherWorkDays = useMemo(() => {
-		return workDays.filter((day) => day !== selectedDay);
-	}, [workDays, selectedDay]);
+		return workDays
+			.filter((day) => day !== selectedDay)
+			.filter((day) => !isDayInPast(day) && !timeEntries[day]?.verified); // Exclude past and verified days
+	}, [workDays, selectedDay, timeEntries]);
 
 	// Initialize custom distribution when work days change
 	useEffect(() => {
 		if (distributionStrategy === "custom") {
 			const distribution: Record<DayKey, number> = {} as Record<DayKey, number>;
 
-			// Distribute deficit equally as a starting point
-			const perDayExtra = deficit / Math.max(1, otherWorkDays.length);
+			// Get future work days (excluding both the selected day and past days)
+			const futureWorkDays = workDays.filter(
+				(day) => day !== selectedDay && !isDayInPast(day),
+			);
 
-			for (const day of otherWorkDays) {
-				distribution[day] = perDayExtra;
+			// Distribute deficit equally as a starting point, but only for future days
+			const availableDays = futureWorkDays.length;
+			if (availableDays > 0) {
+				const perDayExtra = deficit / availableDays;
+
+				for (const day of futureWorkDays) {
+					distribution[day] = perDayExtra;
+				}
 			}
 
 			setCustomDistribution(distribution);
 		}
-	}, [otherWorkDays, deficit, distributionStrategy]);
+	}, [workDays, selectedDay, deficit, distributionStrategy]);
 
 	// Calculate the adjusted time entries based on the selected strategy
 	const calculateAdjustedEntries = useCallback(() => {
 		const newEntries = { ...timeEntries };
 
-		// Update the early departure day
-		if (newEntries[selectedDay]) {
+		// Update the early departure day (if not in the past or verified)
+		if (newEntries[selectedDay] && canModifySelectedDay) {
 			const officeHoursStart =
 				daySettings[selectedDay]?.officeHoursStart || "09:00";
 
@@ -178,11 +205,17 @@ export function EarlyDepartureScheduler({
 			};
 		}
 
-		if (distributionStrategy === "equal" && otherWorkDays.length > 0) {
-			// Distribute deficit equally among other work days
-			const extraHoursPerDay = deficit / otherWorkDays.length;
+		// Get future work days that aren't verified (excluding both the selected day, past days, and verified days)
+		const modifiableDays = workDays.filter(
+			(day) =>
+				day !== selectedDay && !isDayInPast(day) && !timeEntries[day]?.verified,
+		);
 
-			for (const day of otherWorkDays) {
+		if (distributionStrategy === "equal" && modifiableDays.length > 0) {
+			// Distribute deficit equally among future work days that aren't verified
+			const extraHoursPerDay = deficit / modifiableDays.length;
+
+			for (const day of modifiableDays) {
 				if (newEntries[day] && !newEntries[day].isDayOff) {
 					const currentHours = newEntries[day].hours;
 					const newHours = currentHours + extraHoursPerDay;
@@ -208,8 +241,8 @@ export function EarlyDepartureScheduler({
 				}
 			}
 		} else if (distributionStrategy === "custom") {
-			// Apply custom distribution
-			for (const day of otherWorkDays) {
+			// Apply custom distribution (only for future days that aren't verified)
+			for (const day of modifiableDays) {
 				if (
 					newEntries[day] &&
 					!newEntries[day].isDayOff &&
@@ -239,10 +272,10 @@ export function EarlyDepartureScheduler({
 				}
 			}
 		} else if (distributionStrategy === "early-start") {
-			// Adjust start times for all work days to be earlier
-			for (const day of otherWorkDays) {
+			// Adjust start times for modifiable days
+			for (const day of modifiableDays) {
 				if (newEntries[day] && !newEntries[day].isDayOff) {
-					const extraHoursPerDay = deficit / otherWorkDays.length;
+					const extraHoursPerDay = deficit / modifiableDays.length;
 					const currentHours = newEntries[day].hours;
 					const newHours = currentHours + extraHoursPerDay;
 
@@ -272,11 +305,12 @@ export function EarlyDepartureScheduler({
 	}, [
 		timeEntries,
 		selectedDay,
+		canModifySelectedDay,
 		daySettings,
 		departureTime,
 		hoursBeforeDeparture,
 		distributionStrategy,
-		otherWorkDays,
+		workDays,
 		deficit,
 		customDistribution,
 	]);
@@ -353,6 +387,24 @@ export function EarlyDepartureScheduler({
 									))}
 								</SelectContent>
 							</Select>
+							{isSelectedDayInPast && (
+								<div className="mt-2 flex items-center rounded-md bg-amber-50 p-2 text-amber-700 text-xs">
+									<Info className="mr-1.5 h-3.5 w-3.5 flex-shrink-0" />
+									<span>
+										You've selected a day that's already in the past. Changes
+										will not be applied to this day.
+									</span>
+								</div>
+							)}
+							{isSelectedDayVerified && !isSelectedDayInPast && (
+								<div className="mt-2 flex items-center rounded-md bg-green-50 p-2 text-green-700 text-xs">
+									<Info className="mr-1.5 h-3.5 w-3.5 flex-shrink-0" />
+									<span>
+										This day has been verified. If you want to make changes,
+										uncheck "Verify" in the weekly hours view first.
+									</span>
+								</div>
+							)}
 						</div>
 
 						<div className="space-y-2">
@@ -463,74 +515,140 @@ export function EarlyDepartureScheduler({
 								Custom Hour Distribution
 							</h3>
 
+							{/* Information about past days */}
+							{workDays.some(
+								(day) => isDayInPast(day) || timeEntries[day]?.verified,
+							) && (
+								<div className="mb-4 flex items-center rounded-md bg-blue-50 p-2 text-blue-700 text-xs">
+									<Info className="mr-1.5 h-3.5 w-3.5 flex-shrink-0" />
+									<span>
+										Past days and verified days have been excluded from
+										distribution calculations. They are shown below but can't be
+										modified.
+									</span>
+								</div>
+							)}
+
+							{/* Show when no work days available at all */}
+							{workDays.filter((day) => day !== selectedDay).length === 0 && (
+								<div className="p-4 text-center text-muted-foreground">
+									No other work days available for distribution.
+								</div>
+							)}
+
+							{/* Show when there are work days but all are in the past or verified */}
+							{workDays.filter((day) => day !== selectedDay).length > 0 &&
+								workDays.filter(
+									(day) =>
+										day !== selectedDay &&
+										!isDayInPast(day) &&
+										!timeEntries[day]?.verified,
+								).length === 0 && (
+									<div className="p-4 text-center text-muted-foreground">
+										All available days are either in the past or verified and
+										can't be modified.
+									</div>
+								)}
+
 							<div className="space-y-4">
-								{otherWorkDays.map((day) => {
-									const dayLabel = DAYS.find((d) => d.key === day)?.label;
-									const currentHours = timeEntries[day]?.hours || 0;
-									const extraHours = customDistribution[day] || 0;
-									const totalHours = currentHours + extraHours;
+								{/* Show all work days (except selected day) */}
+								{workDays
+									.filter((day) => day !== selectedDay)
+									.map((day) => {
+										const dayLabel = DAYS.find((d) => d.key === day)?.label;
+										const currentHours = timeEntries[day]?.hours || 0;
+										const extraHours = customDistribution[day] || 0;
+										const totalHours = currentHours + extraHours;
+										const isPastDay = isDayInPast(day);
+										const isVerified = timeEntries[day]?.verified || false;
+										const isDisabled = isPastDay || isVerified;
 
-									return (
-										<div key={day} className="space-y-2">
-											<div className="flex items-center justify-between">
-												<Label
-													htmlFor={`distribution-${day}`}
-													className="text-sm"
-												>
-													{dayLabel}
-												</Label>
-												<div className="text-sm">
-													<span className="font-medium">
-														{formatHours(currentHours)}
-													</span>
-													<span className="mx-1">+</span>
-													<span className="font-medium text-green-600">
-														{formatHours(extraHours)}
-													</span>
-													<span className="mx-1">=</span>
-													<span className="font-bold">
-														{formatHours(totalHours)}
-													</span>
+										return (
+											<div
+												key={day}
+												className={`space-y-2 ${isDisabled ? "opacity-70" : ""}`}
+											>
+												<div className="flex items-center justify-between">
+													<Label
+														htmlFor={`distribution-${day}`}
+														className="text-sm"
+													>
+														{dayLabel}
+														{isVerified && (
+															<span className="ml-2 font-medium text-green-600 text-xs">
+																(Verified)
+															</span>
+														)}
+														{!isVerified && isPastDay && (
+															<span className="ml-2 text-muted-foreground text-xs">
+																(Past day)
+															</span>
+														)}
+													</Label>
+													<div className="text-sm">
+														<span className="font-medium">
+															{formatHours(currentHours)}
+														</span>
+														{!isDisabled && (
+															<>
+																<span className="mx-1">+</span>
+																<span className="font-medium text-green-600">
+																	{formatHours(extraHours)}
+																</span>
+																<span className="mx-1">=</span>
+																<span className="font-bold">
+																	{formatHours(totalHours)}
+																</span>
+															</>
+														)}
+													</div>
 												</div>
-											</div>
 
-											<div className="flex items-center gap-2">
-												<Slider
-													id={`distribution-${day}`}
-													value={[extraHours]}
-													min={0}
-													max={Math.min(4, deficit)}
-													step={0.25}
-													onValueChange={(values) => {
-														handleDistributionChange(
-															day as DayKey,
-															values[0] || 0,
-														);
-													}}
-												/>
-												<div className="w-16">
-													<Input
-														type="number"
-														value={extraHours}
-														onChange={(e) => {
-															handleDistributionChange(
-																day as DayKey,
-																Math.min(
-																	Number.parseFloat(e.target.value) || 0,
-																	deficit,
-																),
-															);
-														}}
-														step={0.25}
-														min={0}
-														max={deficit}
-														className="text-right"
-													/>
-												</div>
+												{isDisabled ? (
+													<div className="rounded-md bg-muted px-4 py-2 text-muted-foreground text-xs">
+														{isVerified
+															? "This day has been verified and cannot be modified"
+															: "Past days cannot be modified"}
+													</div>
+												) : (
+													<div className="flex items-center gap-2">
+														<Slider
+															id={`distribution-${day}`}
+															value={[extraHours]}
+															min={0}
+															max={Math.min(4, deficit)}
+															step={0.25}
+															onValueChange={(values) => {
+																handleDistributionChange(
+																	day as DayKey,
+																	values[0] || 0,
+																);
+															}}
+														/>
+														<div className="w-16">
+															<Input
+																type="number"
+																value={extraHours}
+																onChange={(e) => {
+																	handleDistributionChange(
+																		day as DayKey,
+																		Math.min(
+																			Number.parseFloat(e.target.value) || 0,
+																			deficit,
+																		),
+																	);
+																}}
+																step={0.25}
+																min={0}
+																max={deficit}
+																className="text-right"
+															/>
+														</div>
+													</div>
+												)}
 											</div>
-										</div>
-									);
-								})}
+										);
+									})}
 							</div>
 
 							<div className="mt-4 flex items-center justify-between border-t pt-3">

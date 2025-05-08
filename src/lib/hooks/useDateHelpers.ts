@@ -72,3 +72,18 @@ export function getDateForDayInCurrentWeek(day: string): Date {
 
 	return date;
 }
+
+/**
+ * Checks if a day of the current week is in the past
+ */
+export function isDayInPast(day: string): boolean {
+	const today = new Date();
+	// Set today to beginning of day for comparison
+	today.setHours(0, 0, 0, 0);
+
+	const dayDate = getDateForDayInCurrentWeek(day);
+	// Set to beginning of day for comparison
+	dayDate.setHours(0, 0, 0, 0);
+
+	return dayDate < today;
+}

@@ -1,0 +1,14 @@
+/* Additional styles for weekly time entry component */
+.verified-day {
+  border-color: rgb(74, 222, 128); /* green-400 */
+  background-color: rgb(240, 253, 244); /* green-50 */
+}
+
+.dark .verified-day {
+  background-color: rgb(5, 46, 22); /* dark:bg-green-950 */
+  border-color: rgb(21, 128, 61); /* dark:border-green-700 */
+}
+
+.verified-switch {
+  background-color: rgb(22, 163, 74); /* bg-green-600 */
+} 

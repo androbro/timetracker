@@ -122,3 +122,12 @@
 		@apply bg-background text-foreground;
 	}
 }
+
+/* Styles for verified days */
+.verified-day {
+	@apply border-green-400 bg-green-50 dark:bg-green-950 dark:border-green-700;
+}
+
+.verified-switch {
+	@apply bg-green-600;
+}

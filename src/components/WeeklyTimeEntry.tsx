@@ -1,6 +1,8 @@
 "use client";
 
-import { Clock, Settings as SettingsIcon } from "lucide-react";
+import { Badge } from "./ui/badge";
+import "~/styles/week-styles.css";
+import { Clock, LockIcon, Settings as SettingsIcon } from "lucide-react";
 import { Switch } from "~/components/ui/switch";
 import {
 	Tooltip,
@@ -18,6 +20,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 
 import { useEffect, useRef } from "react";
+import { isDayInPast } from "~/lib/hooks/useDateHelpers";
 import { DaySettingsDialog } from "./DaySettingsDialog";
 // Import extracted components and utilities
 import { TimeInput } from "./TimeInput";
@@ -43,6 +46,7 @@ export function WeeklyTimeEntry({
 		handleTimeChange,
 		handleLunchBreakChange,
 		handleDayOffToggle,
+		handleVerifyToggle,
 		applyDefaultHours,
 		fillTargetHours,
 	} = useWeeklyTimeEntryState({
@@ -159,114 +163,179 @@ export function WeeklyTimeEntry({
 								showWeekends ? "md:grid-cols-7" : "md:grid-cols-5",
 							)}
 						>
-							{visibleDays.map(({ key, label }) => (
-								<div key={key} className="rounded-md border p-3">
-									<div className="mb-3 flex flex-col">
-										<div className="mb-2 flex items-center justify-between">
-											<h3 className="font-semibold">{label}</h3>
-											<span
-												className={cn(
-													"font-semibold text-sm",
-													timeEntries[key]?.isDayOff
-														? "text-gray-400"
-														: "text-indigo-600 dark:text-indigo-400",
-												)}
-											>
-												{formatHours(timeEntries[key]?.hours || 0)}
-											</span>
-										</div>
-										<div className="flex items-center justify-between">
-											<div className="inline-flex items-center">
-												<Switch
-													id={`day-off-${key}`}
-													checked={timeEntries[key]?.isDayOff || false}
-													onCheckedChange={(checked) =>
-														handleDayOffToggle(key, checked)
-													}
-													className="mr-2"
-												/>
-												<Label htmlFor={`day-off-${key}`} className="text-sm">
-													Day Off
-												</Label>
-											</div>
-											<TooltipProvider>
-												<Tooltip>
-													<TooltipTrigger asChild>
-														<Button
-															variant="ghost"
-															size="icon"
-															className="h-8 w-8"
-															onClick={() => openDaySettings(key)}
-														>
-															<SettingsIcon className="h-4 w-4" />
-														</Button>
-													</TooltipTrigger>
-													<TooltipContent>
-														<p>Day settings</p>
-													</TooltipContent>
-												</Tooltip>
-											</TooltipProvider>
-										</div>
-									</div>
+							{visibleDays.map(({ key, label }) => {
+								const isVerified = timeEntries[key]?.verified || false;
+								const isPastDay = isDayInPast(key);
 
+								return (
 									<div
+										key={key}
 										className={cn(
-											"flex flex-col gap-2",
-											timeEntries[key]?.isDayOff &&
-												"pointer-events-none opacity-50",
+											"rounded-md border p-3",
+											isVerified && "verified-day",
 										)}
 									>
-										<TimeInput
-											label="Start Time"
-											value={timeEntries[key]?.startTime || ""}
-											onChange={(value) =>
-												handleTimeChange(key, "startTime", value)
-											}
-											disabled={timeEntries[key]?.isDayOff}
-											use24HourFormat={use24HourFormat}
-										/>
-										<TimeInput
-											label="End Time"
-											value={timeEntries[key]?.endTime || ""}
-											onChange={(value) =>
-												handleTimeChange(key, "endTime", value)
-											}
-											disabled={timeEntries[key]?.isDayOff}
-											use24HourFormat={use24HourFormat}
-										/>
-
-										<div className="space-y-1">
-											<Label htmlFor={`lunch-${key}`} className="text-xs">
-												Lunch Break (hours)
-											</Label>
-											<div className="relative">
-												<Input
-													type="number"
-													id={`lunch-${key}`}
-													value={timeEntries[key]?.lunchBreakHours || 0}
-													onChange={(e) =>
-														handleLunchBreakChange(
-															key,
-															Number.parseFloat(e.target.value) || 0,
-														)
-													}
-													step="0.25"
-													min="0"
-													max="8"
-													disabled={timeEntries[key]?.isDayOff}
-													className="pr-10"
-												/>
-												<div className="absolute inset-y-0 right-0 flex items-center pr-2">
-													<Clock
-														className="h-4 w-4 text-gray-400"
-														aria-hidden="true"
-													/>
+										<div className="mb-3 flex flex-col">
+											<div className="mb-2 flex items-center justify-between">
+												<div className="flex items-center">
+													<h3
+														className={cn(
+															"font-semibold",
+															isVerified && "text-green-600",
+														)}
+													>
+														{label}
+													</h3>
+													{isPastDay && !isVerified && (
+														<Badge
+															variant="outline"
+															className="ml-2 border-amber-500 bg-amber-50 text-amber-700 text-xs"
+														>
+															Past Day
+														</Badge>
+													)}
 												</div>
+												<span
+													className={cn(
+														"font-semibold text-sm",
+														timeEntries[key]?.isDayOff
+															? "text-gray-400"
+															: isVerified
+																? "text-emerald-600 dark:text-emerald-400"
+																: "text-indigo-600 dark:text-indigo-400",
+													)}
+												>
+													{formatHours(timeEntries[key]?.hours || 0)}
+												</span>
+											</div>
+											<div className="flex items-center justify-between">
+												<div className="flex items-center gap-2">
+													<div className="inline-flex items-center">
+														<Switch
+															id={`day-off-${key}`}
+															checked={timeEntries[key]?.isDayOff || false}
+															onCheckedChange={(checked) =>
+																handleDayOffToggle(key, checked)
+															}
+															disabled={isVerified}
+															className="mr-2"
+														/>
+														<Label
+															htmlFor={`day-off-${key}`}
+															className="text-sm"
+														>
+															Day Off
+														</Label>
+													</div>
+												</div>
+
+												<TooltipProvider>
+													<Tooltip>
+														<TooltipTrigger asChild>
+															<Button
+																variant="ghost"
+																size="icon"
+																className="h-8 w-8"
+																onClick={() => openDaySettings(key)}
+																disabled={isVerified}
+															>
+																<SettingsIcon className="h-4 w-4" />
+															</Button>
+														</TooltipTrigger>
+														<TooltipContent>
+															<p>Day settings</p>
+														</TooltipContent>
+													</Tooltip>
+												</TooltipProvider>
+											</div>
+										</div>
+
+										<div
+											className={cn(
+												"flex flex-col gap-2",
+												(timeEntries[key]?.isDayOff || isVerified) &&
+													"pointer-events-none opacity-50",
+											)}
+										>
+											<TimeInput
+												label="Start Time"
+												value={timeEntries[key]?.startTime || ""}
+												onChange={(value) =>
+													handleTimeChange(key, "startTime", value)
+												}
+												disabled={timeEntries[key]?.isDayOff || isVerified}
+												use24HourFormat={use24HourFormat}
+											/>
+											<TimeInput
+												label="End Time"
+												value={timeEntries[key]?.endTime || ""}
+												onChange={(value) =>
+													handleTimeChange(key, "endTime", value)
+												}
+												disabled={timeEntries[key]?.isDayOff || isVerified}
+												use24HourFormat={use24HourFormat}
+											/>
+
+											<div className="space-y-1">
+												<Label htmlFor={`lunch-${key}`} className="text-xs">
+													Lunch Break (hours)
+												</Label>
+												<div className="relative">
+													<Input
+														type="number"
+														id={`lunch-${key}`}
+														value={timeEntries[key]?.lunchBreakHours || 0}
+														onChange={(e) =>
+															handleLunchBreakChange(
+																key,
+																Number.parseFloat(e.target.value) || 0,
+															)
+														}
+														step="0.25"
+														min="0"
+														max="8"
+														disabled={timeEntries[key]?.isDayOff || isVerified}
+														className="pr-10"
+													/>
+													<div className="absolute inset-y-0 right-0 flex items-center pr-2">
+														<Clock
+															className="h-4 w-4 text-gray-400"
+															aria-hidden="true"
+														/>
+													</div>
+												</div>
+											</div>
+
+											<div className="ml-2 inline-flex items-center">
+												<Switch
+													id={`verified-${key}`}
+													checked={isVerified}
+													onCheckedChange={(checked) =>
+														handleVerifyToggle(key, checked)
+													}
+													className={cn(
+														"mr-2",
+														isVerified && "verified-switch",
+													)}
+												/>
+												<Label
+													htmlFor={`verified-${key}`}
+													className="flex items-center text-sm"
+												>
+													{isVerified ? (
+														<>
+															<LockIcon className="mr-1 h-3 w-3" />
+															Locked
+														</>
+													) : (
+														<>Done the work</>
+													)}
+												</Label>
 											</div>
 										</div>
 									</div>
-								</div>
-							))}
+								);
+							})}
 						</div>
 					</div>
 				</CardContent>

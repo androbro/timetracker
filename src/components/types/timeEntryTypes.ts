@@ -16,6 +16,7 @@ export interface TimeEntry {
 	startTime: string;
 	endTime: string;
 	lunchBreakHours: number;
+	verified?: boolean; // Indicates if this day has been verified/completed
 }
 
 export interface WeeklyTimeEntryProps {
