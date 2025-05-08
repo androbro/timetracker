@@ -2,7 +2,6 @@
 
 import { Clock, Info } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { cn } from "~/lib/utils";
 import type { DaySettings } from "./Settings";
 import { TimeInput } from "./TimeInput";
 import { DAYS, type DayKey, type TimeEntry } from "./types/timeEntryTypes";
@@ -19,7 +18,6 @@ import {
 	SelectValue,
 } from "./ui/select";
 import { Slider } from "./ui/slider";
-import { Switch } from "./ui/switch";
 import {
 	Tooltip,
 	TooltipContent,
@@ -268,7 +266,7 @@ export function EarlyDepartureScheduler({
 
 	// Helper functions for time conversion
 	const convertTimeToMinutes = (time: string): number => {
-		const [hours, minutes] = time.split(":").map(Number);
+		const [hours = 0, minutes = 0] = time.split(":").map(Number);
 		return hours * 60 + minutes;
 	};
 
@@ -329,6 +327,7 @@ export function EarlyDepartureScheduler({
 						<div className="space-y-2">
 							<Label htmlFor="departure-time">Departure Time</Label>
 							<TimeInput
+								label="Departure Time"
 								value={departureTime}
 								onChange={setDepartureTime}
 								use24HourFormat={use24HourFormat}
@@ -471,7 +470,10 @@ export function EarlyDepartureScheduler({
 														max={Math.min(4, deficit)}
 														step={0.25}
 														onValueChange={(value) =>
-															handleDistributionChange(day as DayKey, value[0])
+															handleDistributionChange(
+																day as DayKey,
+																value[0] || 0,
+															)
 														}
 													/>
 													<div className="w-16">
