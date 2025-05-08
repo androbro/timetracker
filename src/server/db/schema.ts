@@ -2,8 +2,17 @@
 // https://orm.drizzle.team/docs/sql-schema-declaration
 
 import { sql } from "drizzle-orm";
-import { index, pgTableCreator, timestamp, integer, time, boolean, text, varchar } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+import {
+	boolean,
+	index,
+	integer,
+	pgTableCreator,
+	text,
+	time,
+	timestamp,
+	varchar,
+} from "drizzle-orm/pg-core";
 
 /**
  * This is an example of how to use the multi-proj ect schema feature of Drizzle ORM. Use the same
@@ -21,12 +30,13 @@ export const workWeeks = createTable(
 		year: t.integer().notNull(),
 		targetHours: t.integer().notNull(), // 40 or 32
 		breakDuration: t.integer().notNull(), // in minutes
-		createdAt: t.timestamp({ withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+		createdAt: t
+			.timestamp({ withTimezone: true })
+			.default(sql`CURRENT_TIMESTAMP`)
+			.notNull(),
 		updatedAt: t.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
 	}),
-	(t) => [
-		index("week_year_idx").on(t.weekNumber, t.year),
-	],
+	(t) => [index("week_year_idx").on(t.weekNumber, t.year)],
 );
 
 export const workWeeksRelations = relations(workWeeks, ({ many }) => ({
@@ -37,18 +47,22 @@ export const workDays = createTable(
 	"work_day",
 	(t) => ({
 		id: t.integer().primaryKey().generatedByDefaultAsIdentity(),
-		weekId: t.integer().notNull().references(() => workWeeks.id),
+		weekId: t
+			.integer()
+			.notNull()
+			.references(() => workWeeks.id),
 		date: t.timestamp({ withTimezone: true }).notNull(),
 		startTime: t.time().notNull(),
 		endTime: t.time().notNull(),
 		totalHours: t.integer().notNull(), // in minutes
 		isDayOff: t.boolean().default(false).notNull(), // Day off (like weekend)
-		createdAt: t.timestamp({ withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+		createdAt: t
+			.timestamp({ withTimezone: true })
+			.default(sql`CURRENT_TIMESTAMP`)
+			.notNull(),
 		updatedAt: t.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
 	}),
-	(t) => [
-		index("week_day_idx").on(t.weekId, t.date),
-	],
+	(t) => [index("week_day_idx").on(t.weekId, t.date)],
 );
 
 export const workDaysRelations = relations(workDays, ({ one }) => ({
@@ -69,22 +83,23 @@ export const daySettings = createTable(
 		defaultHours: t.integer().notNull().default(480), // in minutes, default 8 hours (480 min)
 		officeHoursStart: t.time().notNull().default(sql`'09:00:00'`), // Office hours start time
 		officeHoursEnd: t.time().notNull().default(sql`'17:00:00'`), // Office hours end time
-		createdAt: t.timestamp({ withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+		createdAt: t
+			.timestamp({ withTimezone: true })
+			.default(sql`CURRENT_TIMESTAMP`)
+			.notNull(),
 		updatedAt: t.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
 	}),
-	(t) => [
-		index("day_name_idx").on(t.dayName),
-	],
+	(t) => [index("day_name_idx").on(t.dayName)],
 );
 
 // User settings table to store user preferences
-export const userSettings = createTable(
-	"user_settings",
-	(t) => ({
-		id: t.integer().primaryKey().generatedByDefaultAsIdentity(),
-		use24HourFormat: t.boolean().default(true).notNull(),
-		showWeekends: t.boolean().default(true).notNull(),
-		createdAt: t.timestamp({ withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-		updatedAt: t.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
-	})
-);
+export const userSettings = createTable("user_settings", (t) => ({
+	id: t.integer().primaryKey().generatedByDefaultAsIdentity(),
+	use24HourFormat: t.boolean().default(true).notNull(),
+	showWeekends: t.boolean().default(true).notNull(),
+	createdAt: t
+		.timestamp({ withTimezone: true })
+		.default(sql`CURRENT_TIMESTAMP`)
+		.notNull(),
+	updatedAt: t.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+}));

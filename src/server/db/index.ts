@@ -13,9 +13,8 @@ const globalForDb = globalThis as unknown as {
 };
 
 // Configure connection options differently for production vs development
-const connectionConfig = env.NODE_ENV === "production"
-	? { ssl: { rejectUnauthorized: false } }
-	: {};
+const connectionConfig =
+	env.NODE_ENV === "production" ? { ssl: { rejectUnauthorized: false } } : {};
 
 const conn = globalForDb.conn ?? postgres(env.DATABASE_URL, connectionConfig);
 if (env.NODE_ENV !== "production") globalForDb.conn = conn;

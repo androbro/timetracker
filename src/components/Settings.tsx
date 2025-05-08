@@ -1,21 +1,21 @@
 "use client";
 
+import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
+import { api } from "~/trpc/react";
+import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
-	SelectValue
+	SelectValue,
 } from "./ui/select";
-import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
-import { Button } from "./ui/button";
-import { AlertTriangle } from "lucide-react";
-import { api } from "~/trpc/react";
-import { toast } from "sonner";
 
 export interface DaySettings {
 	defaultStartTime: string;
@@ -44,7 +44,7 @@ export function Settings({
 	initialSettings,
 	onSettingsChange,
 	open,
-	onOpenChange
+	onOpenChange,
 }: SettingsProps) {
 	const [settings, setSettings] = useState<TimeSettings>(initialSettings);
 	const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -57,12 +57,12 @@ export function Settings({
 		},
 		onError: (error) => {
 			toast.error(`Error deleting data: ${error.message}`);
-		}
+		},
 	});
 
 	const handleSettingChange = <K extends keyof TimeSettings>(
 		key: K,
-		value: TimeSettings[K]
+		value: TimeSettings[K],
 	) => {
 		const newSettings = { ...settings, [key]: value };
 		setSettings(newSettings);
@@ -85,7 +85,7 @@ export function Settings({
 				</DialogHeader>
 				<div className="space-y-4">
 					<div className="space-y-2">
-						<Label htmlFor="weekly-hours" className="text-sm font-medium">
+						<Label htmlFor="weekly-hours" className="font-medium text-sm">
 							Weekly Target Hours
 						</Label>
 						<Select
@@ -105,7 +105,7 @@ export function Settings({
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="break-duration" className="text-sm font-medium">
+						<Label htmlFor="break-duration" className="font-medium text-sm">
 							Break Duration (minutes)
 						</Label>
 						<Input
@@ -119,7 +119,7 @@ export function Settings({
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="time-format" className="text-sm font-medium">
+						<Label htmlFor="time-format" className="font-medium text-sm">
 							Time Format
 						</Label>
 						<Select
@@ -149,27 +149,27 @@ export function Settings({
 							/>
 							<Label
 								htmlFor="show-weekends"
-								className="text-sm font-medium cursor-pointer"
+								className="cursor-pointer font-medium text-sm"
 							>
 								Show Weekends by Default
 							</Label>
 						</div>
 					</div>
 
-					<div className="mt-8 pt-4 border-t">
+					<div className="mt-8 border-t pt-4">
 						<div className="space-y-4">
 							<div className="flex items-center gap-2">
 								<AlertTriangle className="h-5 w-5 text-red-500" />
-								<h3 className="text-base font-semibold text-red-500">
+								<h3 className="font-semibold text-base text-red-500">
 									Danger Zone
 								</h3>
 							</div>
 
 							<div className="rounded-md border border-red-200 bg-red-50 p-4">
-								<p className="text-sm font-medium text-red-800 mb-2">
+								<p className="mb-2 font-medium text-red-800 text-sm">
 									Delete all your data
 								</p>
-								<p className="text-xs text-red-700 mb-4">
+								<p className="mb-4 text-red-700 text-xs">
 									This action is irreversible. All your time entries, work
 									weeks, and custom settings will be permanently deleted.
 								</p>
@@ -177,7 +177,7 @@ export function Settings({
 								<div className="flex flex-col gap-2">
 									<Label
 										htmlFor="delete-confirm"
-										className="text-xs font-medium text-red-700"
+										className="font-medium text-red-700 text-xs"
 									>
 										Type 'delete' to confirm
 									</Label>

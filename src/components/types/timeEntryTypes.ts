@@ -21,7 +21,7 @@ export interface TimeEntry {
 export interface WeeklyTimeEntryProps {
 	onTimeEntryChange?: (
 		entries: Record<string, TimeEntry>,
-		changedDay?: string
+		changedDay?: string,
 	) => void;
 	initialEntries?: Partial<Record<string, Partial<TimeEntry>>>;
 	targetHours: number;
@@ -39,5 +39,5 @@ export const DAYS = [
 	{ key: "thursday", label: "Thursday" },
 	{ key: "friday", label: "Friday" },
 	{ key: "saturday", label: "Saturday" },
-	{ key: "sunday", label: "Sunday" }
-] as const; 
+	{ key: "sunday", label: "Sunday" },
+] as const;

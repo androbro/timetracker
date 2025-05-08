@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { TimeInput } from "./TimeInput";
-import type { DaySettings } from "./Settings";
+import { useEffect, useState } from "react";
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
-	DialogTitle
+	DialogTitle,
 } from "~/components/ui/dialog";
+import type { DaySettings } from "./Settings";
+import { TimeInput } from "./TimeInput";
 import { Button } from "./ui/button";
 
 interface DaySettingsDialogProps {
@@ -26,7 +26,7 @@ export function DaySettingsDialog({
 	day,
 	daySettings,
 	onSave,
-	use24HourFormat = true
+	use24HourFormat = true,
 }: DaySettingsDialogProps) {
 	const [tempSettings, setTempSettings] = useState<DaySettings>(daySettings);
 
@@ -39,11 +39,11 @@ export function DaySettingsDialog({
 
 	const handleSettingChange = (
 		field: keyof DaySettings,
-		value: string | number
+		value: string | number,
 	) => {
 		setTempSettings((prev) => ({
 			...prev,
-			[field]: value
+			[field]: value,
 		}));
 	};
 
@@ -81,7 +81,7 @@ export function DaySettingsDialog({
 					</div>
 
 					<div className="mt-4 border-t pt-4">
-						<h3 className="mb-2 text-sm font-medium">Office Hours</h3>
+						<h3 className="mb-2 font-medium text-sm">Office Hours</h3>
 						<div className="grid grid-cols-2 gap-4">
 							<TimeInput
 								label="Office Hours Start"
@@ -94,7 +94,9 @@ export function DaySettingsDialog({
 							<TimeInput
 								label="Office Hours End"
 								value={tempSettings.officeHoursEnd || "17:00"}
-								onChange={(value) => handleSettingChange("officeHoursEnd", value)}
+								onChange={(value) =>
+									handleSettingChange("officeHoursEnd", value)
+								}
 								use24HourFormat={use24HourFormat}
 							/>
 						</div>
@@ -104,14 +106,14 @@ export function DaySettingsDialog({
 						<Button
 							variant="outline"
 							onClick={onClose}
-							className="rounded-md px-4 py-2 text-sm font-medium"
+							className="rounded-md px-4 py-2 font-medium text-sm"
 						>
 							Cancel
 						</Button>
 						<Button
 							variant="default"
 							onClick={handleSave}
-							className="rounded-md px-4 py-2 text-sm font-medium"
+							className="rounded-md px-4 py-2 font-medium text-sm"
 						>
 							Save
 						</Button>

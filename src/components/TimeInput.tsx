@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
+import { useCallback, useEffect, useState } from "react";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
-	TooltipTrigger
+	TooltipTrigger,
 } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 
 // Custom TimeInput component for better time picking
 export interface TimeInputProps {
@@ -98,11 +98,11 @@ export const TimeInput = ({
 					value={formattedValue}
 					onChange={handleTimeChange}
 					className={cn(
-						"w-full text-center px-1",
+						"w-full px-1 text-center",
 						!use24HourFormat && "rounded-r-none",
-						disabled && "bg-gray-200 dark:bg-gray-700 opacity-70",
+						disabled && "bg-gray-200 opacity-70 dark:bg-gray-700",
 						error && "border-red-500 focus-visible:ring-red-500",
-						className
+						className,
 					)}
 					disabled={disabled}
 					{...props}
@@ -110,7 +110,7 @@ export const TimeInput = ({
 						fontSize: "0.95rem",
 						width: "100%",
 						padding: "0.5rem 0.2rem",
-						appearance: "textfield"
+						appearance: "textfield",
 					}}
 				/>
 
@@ -119,11 +119,11 @@ export const TimeInput = ({
 						type="button"
 						onClick={toggleAmPm}
 						className={cn(
-							"min-w-[40px] h-9 px-2 text-xs font-medium rounded-md flex items-center justify-center cursor-pointer",
-							"border border-input border-l-0 rounded-l-none",
+							"flex h-9 min-w-[40px] cursor-pointer items-center justify-center rounded-md px-2 font-medium text-xs",
+							"rounded-l-none border border-input border-l-0",
 							isPM
 								? "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200"
-								: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+								: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
 						)}
 					>
 						{isPM ? "PM" : "AM"}

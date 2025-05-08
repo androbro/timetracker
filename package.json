@@ -8,7 +8,7 @@
 		"check": "biome check .",
 		"check:unsafe": "biome check --write --unsafe .",
 		"check:write": "biome check --write .",
-		"fix:classes": "biome check --write --rule=useSortedClasses --files-ignore-unknown=true .",
+		"fix:classes": "biome check --write --unsafe --files-ignore-unknown=true .",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
 		"db:push": "drizzle-kit push",

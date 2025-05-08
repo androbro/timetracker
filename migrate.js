@@ -1,14 +1,14 @@
 // Simple migration script to add missing columns
-const { Client } = require('pg');
+const { Client } = require("pg");
 
 const client = new Client({
-	connectionString: 'postgres://postgres:postgres@localhost:5432/timetracker'
+	connectionString: "postgres://postgres:postgres@localhost:5432/timetracker",
 });
 
 async function addColumns() {
 	try {
 		await client.connect();
-		console.log('Connected to database');
+		console.log("Connected to database");
 
 		// Add columns if they don't exist
 		await client.query(`
@@ -17,13 +17,13 @@ async function addColumns() {
       ADD COLUMN IF NOT EXISTS "isHoliday" boolean DEFAULT false NOT NULL;
     `);
 
-		console.log('Migration completed successfully');
+		console.log("Migration completed successfully");
 	} catch (error) {
-		console.error('Migration failed:', error);
+		console.error("Migration failed:", error);
 	} finally {
 		await client.end();
-		console.log('Database connection closed');
+		console.log("Database connection closed");
 	}
 }
 
-addColumns(); 
+addColumns();

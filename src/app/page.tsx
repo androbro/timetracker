@@ -1,12 +1,12 @@
+import { FeatureTracker } from "~/components/FeatureTracker";
 import { HydrateClient } from "~/trpc/server";
 import { TimeTracker } from "./_components/time-tracker";
-import { FeatureTracker } from "~/components/FeatureTracker";
 
 export default async function Home() {
 	return (
 		<HydrateClient>
 			<main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-				<div className="fixed left-4 top-4 z-10 w-64 max-h-[calc(100vh-32px)] overflow-auto">
+				<div className="fixed top-4 left-4 z-10 max-h-[calc(100vh-32px)] w-64 overflow-auto">
 					<FeatureTracker />
 				</div>
 				<div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">

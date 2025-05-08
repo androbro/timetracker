@@ -2,7 +2,7 @@
 export const calculateHours = (
 	startTime: string,
 	endTime: string,
-	lunchBreakHours: number
+	lunchBreakHours: number,
 ): number => {
 	if (!startTime || !endTime) return 0;
 
@@ -35,4 +35,4 @@ export const formatHours = (hours: number): string => {
 		return `${wholeHours}h`;
 	}
 	return `${wholeHours}h ${minutes}m`;
-}; 
+};

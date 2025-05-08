@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Checkbox } from "./ui/checkbox";
 import { cn } from "~/lib/utils";
+import { Checkbox } from "./ui/checkbox";
 
 interface FeatureItem {
 	id: string;
@@ -17,8 +17,8 @@ const features: FeatureItem[] = [
 		subFeatures: [
 			"Fixed weekly hours target (40/32 hours)",
 			"Configurable work days per week (5/4 days)",
-			"Configurable break duration"
-		]
+			"Configurable break duration",
+		],
 	},
 	{
 		id: "daily-time",
@@ -28,8 +28,8 @@ const features: FeatureItem[] = [
 			"End time input",
 			"Break time inclusion",
 			"Daily hours calculation",
-			"Special handling for non-standard workdays"
-		]
+			"Special handling for non-standard workdays",
+		],
 	},
 	{
 		id: "time-calculator",
@@ -37,8 +37,8 @@ const features: FeatureItem[] = [
 		subFeatures: [
 			"Two-way time calculation",
 			"Early leave planning",
-			"Remaining hours display"
-		]
+			"Remaining hours display",
+		],
 	},
 	{
 		id: "weekly-overview",
@@ -47,8 +47,8 @@ const features: FeatureItem[] = [
 			"Running total of hours worked",
 			"Remaining hours for the week",
 			"Daily entries list",
-			"Weekly summary"
-		]
+			"Weekly summary",
+		],
 	},
 	{
 		id: "data-management",
@@ -57,8 +57,8 @@ const features: FeatureItem[] = [
 			"NeonDB integration",
 			"Save daily time entries",
 			"View historical entries",
-			"Export functionality"
-		]
+			"Export functionality",
+		],
 	},
 	{
 		id: "ui-ux",
@@ -68,9 +68,9 @@ const features: FeatureItem[] = [
 			"Daily and weekly views",
 			"Easy time input",
 			"Responsive design",
-			"Simple navigation between views"
-		]
-	}
+			"Simple navigation between views",
+		],
+	},
 ];
 
 // Generate unique IDs for each subfeature
@@ -83,7 +83,7 @@ const allFeatures = features.flatMap((feature) => {
 		feature.subFeatures?.map((subFeature) => ({
 			id: `${feature.id}-${subFeature.toLowerCase().replace(/\s/g, "-")}`,
 			name: subFeature,
-			parentId: feature.id
+			parentId: feature.id,
 		})) || [];
 
 	return [mainFeature, ...subFeatures];
@@ -118,18 +118,18 @@ export function FeatureTracker({ className }: FeatureTrackerProps) {
 	const handleItemCheck = (id: string, checked: boolean) => {
 		setCheckedItems((prev) => ({
 			...prev,
-			[id]: checked
+			[id]: checked,
 		}));
 	};
 
 	return (
 		<div
 			className={cn(
-				"p-4 bg-white rounded-md h-full overflow-auto text-black",
-				className
+				"h-full overflow-auto rounded-md bg-white p-4 text-black",
+				className,
 			)}
 		>
-			<h2 className="text-xl font-bold mb-4">Time Tracker Features</h2>
+			<h2 className="mb-4 font-bold text-xl">Time Tracker Features</h2>
 			<div className="space-y-4">
 				{features.map((feature) => (
 					<div key={feature.id} className="space-y-2">
@@ -143,7 +143,7 @@ export function FeatureTracker({ className }: FeatureTrackerProps) {
 							/>
 							<label
 								htmlFor={feature.id}
-								className="text-sm font-medium cursor-pointer"
+								className="cursor-pointer font-medium text-sm"
 							>
 								{feature.name}
 							</label>
@@ -164,7 +164,7 @@ export function FeatureTracker({ className }: FeatureTrackerProps) {
 													handleItemCheck(subId, checked === true)
 												}
 											/>
-											<label htmlFor={subId} className="text-sm cursor-pointer">
+											<label htmlFor={subId} className="cursor-pointer text-sm">
 												{subFeature}
 											</label>
 										</div>

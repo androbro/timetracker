@@ -1,31 +1,31 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
+import { Clock, Info, Settings as SettingsIcon } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { Switch } from "~/components/ui/switch";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
-	TooltipTrigger
+	TooltipTrigger,
 } from "~/components/ui/tooltip";
-import { Info, Settings as SettingsIcon, Clock } from "lucide-react";
-import { Button } from "./ui/button";
 import { cn } from "~/lib/utils";
 import type { DaySettings } from "./Settings";
+import { Button } from "./ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 
+import { DaySettingsDialog } from "./DaySettingsDialog";
 // Import extracted components and utilities
 import { TimeInput } from "./TimeInput";
-import { DaySettingsDialog } from "./DaySettingsDialog";
-import { calculateHours, formatHours } from "./utils/timeUtils";
 import {
+	DAYS,
+	type DayKey,
 	type TimeEntry,
 	type WeeklyTimeEntryProps,
-	type DayKey,
-	DAYS
 } from "./types/timeEntryTypes";
+import { calculateHours, formatHours } from "./utils/timeUtils";
 
 export function WeeklyTimeEntry({
 	onTimeEntryChange,
@@ -35,7 +35,7 @@ export function WeeklyTimeEntry({
 	onDaySettingsChange,
 	use24HourFormat = true,
 	showWeekends = true,
-	onOpenSettings
+	onOpenSettings,
 }: WeeklyTimeEntryProps) {
 	const defaultDays: Record<DayKey, TimeEntry> = {
 		monday: {
@@ -43,50 +43,50 @@ export function WeeklyTimeEntry({
 			isDayOff: false,
 			startTime: "09:00",
 			endTime: "17:00",
-			lunchBreakHours: 0.5
+			lunchBreakHours: 0.5,
 		},
 		tuesday: {
 			hours: 0,
 			isDayOff: false,
 			startTime: "09:00",
 			endTime: "17:00",
-			lunchBreakHours: 0.5
+			lunchBreakHours: 0.5,
 		},
 		wednesday: {
 			hours: 0,
 			isDayOff: false,
 			startTime: "09:00",
 			endTime: "17:00",
-			lunchBreakHours: 0.5
+			lunchBreakHours: 0.5,
 		},
 		thursday: {
 			hours: 0,
 			isDayOff: false,
 			startTime: "09:00",
 			endTime: "17:00",
-			lunchBreakHours: 0.5
+			lunchBreakHours: 0.5,
 		},
 		friday: {
 			hours: 0,
 			isDayOff: false,
 			startTime: "09:00",
 			endTime: "17:00",
-			lunchBreakHours: 0.5
+			lunchBreakHours: 0.5,
 		},
 		saturday: {
 			hours: 0,
 			isDayOff: true,
 			startTime: "09:00",
 			endTime: "17:00",
-			lunchBreakHours: 0.5
+			lunchBreakHours: 0.5,
 		},
 		sunday: {
 			hours: 0,
 			isDayOff: true,
 			startTime: "09:00",
 			endTime: "17:00",
-			lunchBreakHours: 0.5
-		}
+			lunchBreakHours: 0.5,
+		},
 	};
 
 	// State for editing day settings
@@ -109,7 +109,7 @@ export function WeeklyTimeEntry({
 				merged[dayKey].hours = calculateHours(
 					merged[dayKey].startTime,
 					merged[dayKey].endTime,
-					merged[dayKey].lunchBreakHours
+					merged[dayKey].lunchBreakHours,
 				);
 			}
 		}
@@ -130,7 +130,8 @@ export function WeeklyTimeEntry({
 							: defaultEntry.isDayOff,
 					startTime: entry.startTime || defaultEntry.startTime,
 					endTime: entry.endTime || defaultEntry.endTime,
-					lunchBreakHours: entry.lunchBreakHours || defaultEntry.lunchBreakHours
+					lunchBreakHours:
+						entry.lunchBreakHours || defaultEntry.lunchBreakHours,
 				};
 			}
 		}
@@ -139,7 +140,7 @@ export function WeeklyTimeEntry({
 	}, [initialEntries, defaultDaySettings]);
 
 	const [timeEntries, setTimeEntries] = useState<Record<string, TimeEntry>>(
-		() => mergeEntries()
+		() => mergeEntries(),
 	);
 
 	// Update timeEntries when initialEntries changes
@@ -150,7 +151,7 @@ export function WeeklyTimeEntry({
 	const handleTimeChange = (
 		day: string,
 		field: "startTime" | "endTime",
-		value: string
+		value: string,
 	) => {
 		const newEntries: Record<string, TimeEntry> = { ...timeEntries };
 
@@ -162,14 +163,14 @@ export function WeeklyTimeEntry({
 				startTime: currentEntry.startTime,
 				endTime: currentEntry.endTime,
 				lunchBreakHours: currentEntry.lunchBreakHours,
-				...{ [field]: value }
+				...{ [field]: value },
 			};
 
 			// Recalculate hours based on start time, end time and lunch break
 			updatedEntry.hours = calculateHours(
 				updatedEntry.startTime,
 				updatedEntry.endTime,
-				updatedEntry.lunchBreakHours
+				updatedEntry.lunchBreakHours,
 			);
 
 			newEntries[day] = updatedEntry;
@@ -190,14 +191,14 @@ export function WeeklyTimeEntry({
 				isDayOff: currentEntry.isDayOff,
 				startTime: currentEntry.startTime,
 				endTime: currentEntry.endTime,
-				lunchBreakHours: lunchBreakHours
+				lunchBreakHours: lunchBreakHours,
 			};
 
 			// Recalculate hours
 			updatedEntry.hours = calculateHours(
 				updatedEntry.startTime,
 				updatedEntry.endTime,
-				updatedEntry.lunchBreakHours
+				updatedEntry.lunchBreakHours,
 			);
 
 			newEntries[day] = updatedEntry;
@@ -216,7 +217,7 @@ export function WeeklyTimeEntry({
 				...timeEntries[day],
 				isDayOff,
 				// If marking as day off, reset hours to 0
-				hours: isDayOff ? 0 : timeEntries[day].hours
+				hours: isDayOff ? 0 : timeEntries[day].hours,
 			};
 		}
 
@@ -242,7 +243,7 @@ export function WeeklyTimeEntry({
 					...currentEntry,
 					startTime: daySetting.defaultStartTime || currentEntry.startTime,
 					endTime: daySetting.defaultEndTime || currentEntry.endTime,
-					isDayOff: currentEntry.isDayOff
+					isDayOff: currentEntry.isDayOff,
 				};
 
 				// Recalculate hours
@@ -250,7 +251,7 @@ export function WeeklyTimeEntry({
 					newEntries[key].hours = calculateHours(
 						newEntries[key].startTime,
 						newEntries[key].endTime,
-						newEntries[key].lunchBreakHours
+						newEntries[key].lunchBreakHours,
 					);
 				}
 			}
@@ -265,7 +266,7 @@ export function WeeklyTimeEntry({
 		// Calculate current total hours
 		const currentTotal = Object.values(timeEntries).reduce(
 			(sum, entry) => (entry.isDayOff ? sum : sum + entry.hours),
-			0
+			0,
 		);
 
 		// If we already met or exceeded target, no need to adjust
@@ -278,7 +279,7 @@ export function WeeklyTimeEntry({
 
 		// Count how many workdays we have
 		const workdayCount = Object.values(timeEntries).filter(
-			(entry) => !entry.isDayOff
+			(entry) => !entry.isDayOff,
 		).length;
 
 		if (workdayCount === 0) {
@@ -321,7 +322,7 @@ export function WeeklyTimeEntry({
 			entry.hours = calculateHours(
 				entry.startTime,
 				entry.endTime,
-				entry.lunchBreakHours
+				entry.lunchBreakHours,
 			);
 		}
 
@@ -347,27 +348,27 @@ export function WeeklyTimeEntry({
 	// Calculate total hours
 	const totalHours = Object.values(timeEntries).reduce(
 		(sum, entry) => sum + entry.hours,
-		0
+		0,
 	);
 
 	// Format for target vs. actual hours display
 	const hoursDisplay = `${formatHours(totalHours)} / ${formatHours(
-		targetHours
+		targetHours,
 	)}`;
 	const hoursPercentage = (totalHours / targetHours) * 100;
 	const isOverTarget = totalHours > targetHours;
 
 	// Filter days based on showWeekends prop
 	const visibleDays = DAYS.filter(
-		({ key }) => showWeekends || (key !== "saturday" && key !== "sunday")
+		({ key }) => showWeekends || (key !== "saturday" && key !== "sunday"),
 	);
 
 	return (
 		<>
 			<Card className="mb-8">
 				<CardHeader className="pb-2">
-					<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between">
-						<CardTitle className="text-xl mb-2 sm:mb-0">Weekly Hours</CardTitle>
+					<div className="flex flex-col items-start justify-between sm:flex-row sm:items-center">
+						<CardTitle className="mb-2 text-xl sm:mb-0">Weekly Hours</CardTitle>
 						<div className="flex space-x-2">
 							<Button
 								variant="outline"
@@ -390,7 +391,7 @@ export function WeeklyTimeEntry({
 									variant="outline"
 									size="sm"
 									onClick={onOpenSettings}
-									className="h-8 text-xs flex items-center gap-1"
+									className="flex h-8 items-center gap-1 text-xs"
 								>
 									<SettingsIcon className="h-3 w-3" />
 									Settings
@@ -403,31 +404,31 @@ export function WeeklyTimeEntry({
 					<div className="space-y-6">
 						{/* Target hours display */}
 						<div className="flex flex-col">
-							<div className="flex justify-between mb-1">
-								<span className="text-sm font-medium">Target vs. Actual</span>
+							<div className="mb-1 flex justify-between">
+								<span className="font-medium text-sm">Target vs. Actual</span>
 								<span
 									className={cn(
 										"text-sm",
-										isOverTarget ? "text-green-600" : "text-gray-600"
+										isOverTarget ? "text-green-600" : "text-gray-600",
 									)}
 								>
 									{hoursDisplay}
 								</span>
 							</div>
-							<div className="w-full bg-gray-200 rounded-full h-2.5 mb-4 dark:bg-gray-700">
+							<div className="mb-4 h-2.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
 								<div
 									className={cn(
 										"h-2.5 rounded-full",
 										isOverTarget
 											? "bg-green-600"
 											: hoursPercentage >= 100
-											? "bg-green-600"
-											: hoursPercentage >= 90
-											? "bg-yellow-400"
-											: "bg-indigo-600"
+												? "bg-green-600"
+												: hoursPercentage >= 90
+													? "bg-yellow-400"
+													: "bg-indigo-600",
 									)}
 									style={{
-										width: `${Math.min(hoursPercentage, 100)}%`
+										width: `${Math.min(hoursPercentage, 100)}%`,
 									}}
 								/>
 							</div>
@@ -437,20 +438,20 @@ export function WeeklyTimeEntry({
 						<div
 							className={cn(
 								"grid grid-cols-1 gap-4",
-								showWeekends ? "md:grid-cols-7" : "md:grid-cols-5"
+								showWeekends ? "md:grid-cols-7" : "md:grid-cols-5",
 							)}
 						>
 							{visibleDays.map(({ key, label }) => (
-								<div key={key} className="border rounded-md p-3">
-									<div className="flex flex-col mb-3">
-										<div className="flex items-center justify-between mb-2">
+								<div key={key} className="rounded-md border p-3">
+									<div className="mb-3 flex flex-col">
+										<div className="mb-2 flex items-center justify-between">
 											<h3 className="font-semibold">{label}</h3>
 											<span
 												className={cn(
-													"text-sm font-semibold",
+													"font-semibold text-sm",
 													timeEntries[key]?.isDayOff
 														? "text-gray-400"
-														: "text-indigo-600 dark:text-indigo-400"
+														: "text-indigo-600 dark:text-indigo-400",
 												)}
 											>
 												{formatHours(timeEntries[key]?.hours || 0)}
@@ -494,7 +495,7 @@ export function WeeklyTimeEntry({
 										className={cn(
 											"flex flex-col gap-2",
 											timeEntries[key]?.isDayOff &&
-												"opacity-50 pointer-events-none"
+												"pointer-events-none opacity-50",
 										)}
 									>
 										<TimeInput
@@ -565,7 +566,7 @@ export function WeeklyTimeEntry({
 							defaultEndTime: "17:00",
 							defaultHours: 8,
 							officeHoursStart: "09:00",
-							officeHoursEnd: "17:00"
+							officeHoursEnd: "17:00",
 						}
 					}
 					onSave={saveDaySettings}
