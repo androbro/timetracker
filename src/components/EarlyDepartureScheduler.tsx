@@ -24,7 +24,12 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "./ui/tooltip";
-import { calculateHours, formatHours } from "./utils/timeUtils";
+import {
+	calculateHours,
+	convertMinutesToTime,
+	convertTimeToMinutes,
+	formatHours,
+} from "./utils/timeUtils";
 
 interface EarlyDepartureSchedulerProps {
 	timeEntries: Record<string, TimeEntry>;
@@ -262,18 +267,6 @@ export function EarlyDepartureScheduler({
 		}
 
 		return newEntries;
-	};
-
-	// Helper functions for time conversion
-	const convertTimeToMinutes = (time: string): number => {
-		const [hours = 0, minutes = 0] = time.split(":").map(Number);
-		return hours * 60 + minutes;
-	};
-
-	const convertMinutesToTime = (totalMinutes: number): string => {
-		const hours = Math.floor(totalMinutes / 60);
-		const minutes = Math.floor(totalMinutes % 60);
-		return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
 	};
 
 	// Apply the schedule changes

@@ -22,8 +22,11 @@ export const calculateHours = (
 	// Calculate total work minutes and subtract lunch break
 	const workMinutes = endMinutes - startMinutes - lunchBreakHours * 60;
 
+	const hours = Math.max(0, workMinutes / 60);
+	console.log("hours", hours);
+
 	// Convert back to hours with decimal
-	return Math.max(0, workMinutes / 60);
+	return hours;
 };
 
 // Format hours to display in a more readable way (e.g., 7h 30m)
@@ -35,4 +38,21 @@ export const formatHours = (hours: number): string => {
 		return `${wholeHours}h`;
 	}
 	return `${wholeHours}h ${minutes}m`;
+};
+
+/**
+ * Convert time string (HH:MM) to minutes
+ */
+export const convertTimeToMinutes = (time: string): number => {
+	const [hours = 0, minutes = 0] = time.split(":").map(Number);
+	return hours * 60 + minutes;
+};
+
+/**
+ * Convert minutes to time string (HH:MM)
+ */
+export const convertMinutesToTime = (totalMinutes: number): string => {
+	const hours = Math.floor(totalMinutes / 60);
+	const minutes = Math.floor(totalMinutes % 60);
+	return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
 };
