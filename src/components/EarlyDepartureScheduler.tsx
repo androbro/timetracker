@@ -1,7 +1,7 @@
 "use client";
 
 import { Clock, Info } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DaySettings } from "./Settings";
 import { TimeInput } from "./TimeInput";
 import { DAYS, type DayKey, type TimeEntry } from "./types/timeEntryTypes";
@@ -59,9 +59,11 @@ export function EarlyDepartureScheduler({
 	>({} as Record<DayKey, number>);
 
 	// Filter days for display (excluding weekends if not shown)
-	const visibleDays = DAYS.filter(
-		({ key }) => showWeekends || (key !== "saturday" && key !== "sunday"),
-	);
+	const visibleDays = useMemo(() => {
+		return DAYS.filter(
+			({ key }) => showWeekends || (key !== "saturday" && key !== "sunday"),
+		);
+	}, [showWeekends]);
 
 	// Calculate the current week's total working time and availability
 	const {
@@ -138,11 +140,15 @@ export function EarlyDepartureScheduler({
 		visibleDays,
 	]);
 
+	// Memoize other work days to prevent unnecessary recalculations
+	const otherWorkDays = useMemo(() => {
+		return workDays.filter((day) => day !== selectedDay);
+	}, [workDays, selectedDay]);
+
 	// Initialize custom distribution when work days change
 	useEffect(() => {
 		if (distributionStrategy === "custom") {
 			const distribution: Record<DayKey, number> = {} as Record<DayKey, number>;
-			const otherWorkDays = workDays.filter((day) => day !== selectedDay);
 
 			// Distribute deficit equally as a starting point
 			const perDayExtra = deficit / Math.max(1, otherWorkDays.length);
@@ -153,12 +159,11 @@ export function EarlyDepartureScheduler({
 
 			setCustomDistribution(distribution);
 		}
-	}, [workDays, deficit, selectedDay, distributionStrategy]);
+	}, [otherWorkDays, deficit, distributionStrategy]);
 
 	// Calculate the adjusted time entries based on the selected strategy
-	const calculateAdjustedEntries = () => {
+	const calculateAdjustedEntries = useCallback(() => {
 		const newEntries = { ...timeEntries };
-		const otherWorkDays = workDays.filter((day) => day !== selectedDay);
 
 		// Update the early departure day
 		if (newEntries[selectedDay]) {
@@ -208,7 +213,7 @@ export function EarlyDepartureScheduler({
 				if (
 					newEntries[day] &&
 					!newEntries[day].isDayOff &&
-					customDistribution[day]
+					customDistribution[day] !== undefined
 				) {
 					const currentHours = newEntries[day].hours;
 					const newHours = currentHours + customDistribution[day];
@@ -235,11 +240,8 @@ export function EarlyDepartureScheduler({
 			}
 		} else if (distributionStrategy === "early-start") {
 			// Adjust start times for all work days to be earlier
-			for (const day of workDays) {
+			for (const day of otherWorkDays) {
 				if (newEntries[day] && !newEntries[day].isDayOff) {
-					// For the selected day, we've already set the end time
-					if (day === selectedDay) continue;
-
 					const extraHoursPerDay = deficit / otherWorkDays.length;
 					const currentHours = newEntries[day].hours;
 					const newHours = currentHours + extraHoursPerDay;
@@ -267,21 +269,62 @@ export function EarlyDepartureScheduler({
 		}
 
 		return newEntries;
-	};
+	}, [
+		timeEntries,
+		selectedDay,
+		daySettings,
+		departureTime,
+		hoursBeforeDeparture,
+		distributionStrategy,
+		otherWorkDays,
+		deficit,
+		customDistribution,
+	]);
 
 	// Apply the schedule changes
-	const applySchedule = () => {
+	const applySchedule = useCallback(() => {
 		const adjustedEntries = calculateAdjustedEntries();
 		onTimeEntriesChange(adjustedEntries);
-	};
+	}, [calculateAdjustedEntries, onTimeEntriesChange]);
 
 	// Handle custom distribution change
-	const handleDistributionChange = (day: DayKey, value: number) => {
-		setCustomDistribution((prev) => ({
-			...prev,
-			[day]: value,
-		}));
-	};
+	const handleDistributionChange = useCallback((day: DayKey, value: number) => {
+		setCustomDistribution((prev) => {
+			// Only update if the value has changed
+			if (prev[day] === value) return prev;
+			return { ...prev, [day]: value };
+		});
+	}, []);
+
+	// Handle the change of distribution strategy
+	const handleStrategyChange = useCallback(
+		(newStrategy: "equal" | "custom" | "early-start") => {
+			if (distributionStrategy !== newStrategy) {
+				setDistributionStrategy(newStrategy);
+			}
+		},
+		[distributionStrategy],
+	);
+
+	// Handle day selection change
+	const handleDayChange = useCallback((value: string) => {
+		setSelectedDay(value as DayKey);
+	}, []);
+
+	// Handle departure time change
+	const handleDepartureTimeChange = useCallback((value: string) => {
+		setDepartureTime(value);
+	}, []);
+
+	// Memoize the filtered work days for the UI
+	const nonDayOffDays = useMemo(() => {
+		return visibleDays.filter(({ key }) => !timeEntries[key]?.isDayOff);
+	}, [visibleDays, timeEntries]);
+
+	// Memoize the total additional hours calculation
+	const totalAdditionalHours = useMemo(() => {
+		return Object.values(customDistribution).reduce((a, b) => a + b, 0);
+	}, [customDistribution]);
 
 	return (
 		<Card className="mb-8">
@@ -298,21 +341,16 @@ export function EarlyDepartureScheduler({
 					<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 						<div className="space-y-2">
 							<Label htmlFor="early-departure-day">Day to Leave Early</Label>
-							<Select
-								value={selectedDay}
-								onValueChange={(value) => setSelectedDay(value as DayKey)}
-							>
+							<Select value={selectedDay} onValueChange={handleDayChange}>
 								<SelectTrigger id="early-departure-day">
 									<SelectValue placeholder="Select day" />
 								</SelectTrigger>
 								<SelectContent>
-									{visibleDays
-										.filter(({ key }) => !timeEntries[key]?.isDayOff)
-										.map(({ key, label }) => (
-											<SelectItem key={key} value={key}>
-												{label}
-											</SelectItem>
-										))}
+									{nonDayOffDays.map(({ key, label }) => (
+										<SelectItem key={key} value={key}>
+											{label}
+										</SelectItem>
+									))}
 								</SelectContent>
 							</Select>
 						</div>
@@ -322,7 +360,7 @@ export function EarlyDepartureScheduler({
 							<TimeInput
 								label="Departure Time"
 								value={departureTime}
-								onChange={setDepartureTime}
+								onChange={handleDepartureTimeChange}
 								use24HourFormat={use24HourFormat}
 							/>
 						</div>
@@ -372,8 +410,9 @@ export function EarlyDepartureScheduler({
 								variant={
 									distributionStrategy === "equal" ? "default" : "outline"
 								}
-								onClick={() => setDistributionStrategy("equal")}
+								onClick={() => handleStrategyChange("equal")}
 								className="h-auto justify-start py-2 text-left"
+								type="button"
 							>
 								<div className="flex flex-col items-start">
 									<span>Equal Distribution</span>
@@ -387,8 +426,9 @@ export function EarlyDepartureScheduler({
 								variant={
 									distributionStrategy === "custom" ? "default" : "outline"
 								}
-								onClick={() => setDistributionStrategy("custom")}
+								onClick={() => handleStrategyChange("custom")}
 								className="h-auto justify-start py-2 text-left"
+								type="button"
 							>
 								<div className="flex flex-col items-start">
 									<span>Custom Distribution</span>
@@ -402,8 +442,9 @@ export function EarlyDepartureScheduler({
 								variant={
 									distributionStrategy === "early-start" ? "default" : "outline"
 								}
-								onClick={() => setDistributionStrategy("early-start")}
+								onClick={() => handleStrategyChange("early-start")}
 								className="h-auto justify-start py-2 text-left"
+								type="button"
 							>
 								<div className="flex flex-col items-start">
 									<span>Earlier Start Times</span>
@@ -423,75 +464,73 @@ export function EarlyDepartureScheduler({
 							</h3>
 
 							<div className="space-y-4">
-								{workDays
-									.filter((day) => day !== selectedDay)
-									.map((day) => {
-										const dayLabel = DAYS.find((d) => d.key === day)?.label;
-										const currentHours = timeEntries[day]?.hours || 0;
-										const extraHours = customDistribution[day] || 0;
-										const totalHours = currentHours + extraHours;
+								{otherWorkDays.map((day) => {
+									const dayLabel = DAYS.find((d) => d.key === day)?.label;
+									const currentHours = timeEntries[day]?.hours || 0;
+									const extraHours = customDistribution[day] || 0;
+									const totalHours = currentHours + extraHours;
 
-										return (
-											<div key={day} className="space-y-2">
-												<div className="flex items-center justify-between">
-													<Label
-														htmlFor={`distribution-${day}`}
-														className="text-sm"
-													>
-														{dayLabel}
-													</Label>
-													<div className="text-sm">
-														<span className="font-medium">
-															{formatHours(currentHours)}
-														</span>
-														<span className="mx-1">+</span>
-														<span className="font-medium text-green-600">
-															{formatHours(extraHours)}
-														</span>
-														<span className="mx-1">=</span>
-														<span className="font-bold">
-															{formatHours(totalHours)}
-														</span>
-													</div>
-												</div>
-
-												<div className="flex items-center gap-2">
-													<Slider
-														id={`distribution-${day}`}
-														value={[extraHours]}
-														min={0}
-														max={Math.min(4, deficit)}
-														step={0.25}
-														onValueChange={(value) =>
-															handleDistributionChange(
-																day as DayKey,
-																value[0] || 0,
-															)
-														}
-													/>
-													<div className="w-16">
-														<Input
-															type="number"
-															value={extraHours}
-															onChange={(e) =>
-																handleDistributionChange(
-																	day as DayKey,
-																	Math.min(
-																		Number.parseFloat(e.target.value) || 0,
-																		deficit,
-																	),
-																)
-															}
-															step={0.25}
-															min={0}
-															max={deficit}
-															className="text-right"
-														/>
-													</div>
+									return (
+										<div key={day} className="space-y-2">
+											<div className="flex items-center justify-between">
+												<Label
+													htmlFor={`distribution-${day}`}
+													className="text-sm"
+												>
+													{dayLabel}
+												</Label>
+												<div className="text-sm">
+													<span className="font-medium">
+														{formatHours(currentHours)}
+													</span>
+													<span className="mx-1">+</span>
+													<span className="font-medium text-green-600">
+														{formatHours(extraHours)}
+													</span>
+													<span className="mx-1">=</span>
+													<span className="font-bold">
+														{formatHours(totalHours)}
+													</span>
 												</div>
 											</div>
-										);
-									})}
+
+											<div className="flex items-center gap-2">
+												<Slider
+													id={`distribution-${day}`}
+													value={[extraHours]}
+													min={0}
+													max={Math.min(4, deficit)}
+													step={0.25}
+													onValueChange={(values) => {
+														handleDistributionChange(
+															day as DayKey,
+															values[0] || 0,
+														);
+													}}
+												/>
+												<div className="w-16">
+													<Input
+														type="number"
+														value={extraHours}
+														onChange={(e) => {
+															handleDistributionChange(
+																day as DayKey,
+																Math.min(
+																	Number.parseFloat(e.target.value) || 0,
+																	deficit,
+																),
+															);
+														}}
+														step={0.25}
+														min={0}
+														max={deficit}
+														className="text-right"
+													/>
+												</div>
+											</div>
+										</div>
+									);
+								})}
 							</div>
 
 							<div className="mt-4 flex items-center justify-between border-t pt-3">
@@ -499,12 +538,7 @@ export function EarlyDepartureScheduler({
 									Total Additional Hours:
 								</div>
 								<div className="font-bold text-sm">
-									{formatHours(
-										Object.values(customDistribution).reduce(
-											(a, b) => a + b,
-											0,
-										),
-									)}
+									{formatHours(totalAdditionalHours)}
 									<span className="mx-1">of</span>
 									{formatHours(deficit)}
 								</div>
@@ -522,7 +556,12 @@ export function EarlyDepartureScheduler({
 							</span>
 							<Tooltip>
 								<TooltipTrigger asChild>
-									<Button variant="ghost" size="icon" className="h-5 w-5">
+									<Button
+										variant="ghost"
+										size="icon"
+										className="h-5 w-5"
+										type="button"
+									>
 										<Info className="h-3 w-3" />
 									</Button>
 								</TooltipTrigger>
@@ -538,7 +577,7 @@ export function EarlyDepartureScheduler({
 
 					{/* Apply Changes Button */}
 					<div className="flex justify-end">
-						<Button onClick={applySchedule} className="gap-2">
+						<Button onClick={applySchedule} className="gap-2" type="button">
 							<Clock className="h-4 w-4" />
 							Apply Schedule
 						</Button>

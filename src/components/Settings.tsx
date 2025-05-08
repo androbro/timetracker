@@ -105,20 +105,6 @@ export function Settings({
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="break-duration" className="font-medium text-sm">
-							Break Duration (minutes)
-						</Label>
-						<Input
-							id="break-duration"
-							type="number"
-							value={settings.breakDuration}
-							onChange={(e) =>
-								handleSettingChange("breakDuration", Number(e.target.value))
-							}
-						/>
-					</div>
-
-					<div className="space-y-2">
 						<Label htmlFor="time-format" className="font-medium text-sm">
 							Time Format
 						</Label>

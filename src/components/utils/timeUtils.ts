@@ -4,27 +4,12 @@ export const calculateHours = (
 	endTime: string,
 	lunchBreakHours: number,
 ): number => {
-	console.log(`[timeUtils] calculateHours called with:`, {
-		startTime,
-		endTime,
-		lunchBreakHours,
-		caller: new Error().stack,
-	});
-
-	if (!startTime || !endTime) {
-		console.log(`[timeUtils] calculateHours early return - missing times`);
-		return 0;
-	}
+	if (!startTime || !endTime) return 0;
 
 	const startParts = startTime.split(":").map(Number);
 	const endParts = endTime.split(":").map(Number);
 
-	if (startParts.length < 2 || endParts.length < 2) {
-		console.log(
-			`[timeUtils] calculateHours early return - invalid time format`,
-		);
-		return 0;
-	}
+	if (startParts.length < 2 || endParts.length < 2) return 0;
 
 	const startHour = startParts[0] || 0;
 	const startMinute = startParts[1] || 0;
@@ -38,9 +23,6 @@ export const calculateHours = (
 	const workMinutes = endMinutes - startMinutes - lunchBreakHours * 60;
 
 	const hours = Math.max(0, workMinutes / 60);
-	console.log("[timeUtils] Hours calculated:", hours);
-
-	// Convert back to hours with decimal
 	return hours;
 };
 
@@ -52,11 +34,16 @@ export const formatHours = (hours: number): string => {
 	if (minutes === 0) {
 		return `${wholeHours}h`;
 	}
+
+	if (wholeHours === 0) {
+		return `${minutes}m`;
+	}
+
 	return `${wholeHours}h ${minutes}m`;
 };
 
 /**
- * Convert time string (HH:MM) to minutes
+ * Convert time string (HH:MM) to minutes since start of day
  */
 export const convertTimeToMinutes = (time: string): number => {
 	const [hours = 0, minutes = 0] = time.split(":").map(Number);
@@ -64,10 +51,10 @@ export const convertTimeToMinutes = (time: string): number => {
 };
 
 /**
- * Convert minutes to time string (HH:MM)
+ * Convert minutes since start of day to time string (HH:MM)
  */
 export const convertMinutesToTime = (totalMinutes: number): string => {
 	const hours = Math.floor(totalMinutes / 60);
-	const minutes = Math.floor(totalMinutes % 60);
+	const minutes = totalMinutes % 60;
 	return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
 };

@@ -37,11 +37,6 @@ export function WeeklyTimeEntry({
 	const { formatHours } = useTimeUtils();
 	const initialCalculationDone = useRef(false);
 
-	console.log(
-		"[WeeklyTimeEntry] Rendering with initialEntries:",
-		initialEntries,
-	);
-
 	const {
 		timeEntries,
 		totalHours,
@@ -57,8 +52,6 @@ export function WeeklyTimeEntry({
 		onTimeEntryChange,
 	});
 
-	console.log("[WeeklyTimeEntry] Calculated timeEntries:", timeEntries);
-
 	// Ensure calculated hours are persisted to the database
 	useEffect(() => {
 		// Only run once after initial calculations to avoid loops
@@ -66,14 +59,10 @@ export function WeeklyTimeEntry({
 			!initialCalculationDone.current &&
 			Object.keys(timeEntries).length > 0
 		) {
-			console.log(
-				"[WeeklyTimeEntry] First calculation complete, preparing to persist",
-			);
 			initialCalculationDone.current = true;
 
 			// Delay to ensure all calculations are complete
 			const timer = setTimeout(() => {
-				console.log("[WeeklyTimeEntry] Persisting calculations to database");
 				onTimeEntryChange?.(timeEntries);
 			}, 500);
 
@@ -256,7 +245,10 @@ export function WeeklyTimeEntry({
 													id={`lunch-${key}`}
 													value={timeEntries[key]?.lunchBreakHours || 0}
 													onChange={(e) =>
-														handleLunchBreakChange(key, e.target.value)
+														handleLunchBreakChange(
+															key,
+															Number.parseFloat(e.target.value) || 0,
+														)
 													}
 													step="0.25"
 													min="0"

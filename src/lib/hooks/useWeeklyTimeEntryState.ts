@@ -21,401 +21,292 @@ export function useWeeklyTimeEntryState({
 }: UseWeeklyTimeEntryStateProps) {
 	const { calculateHours } = useTimeUtils();
 
-	console.log("[useWeeklyTimeEntryState] Initializing with:", {
-		initialEntries,
-		hasInitialEntries: Object.keys(initialEntries).length > 0,
-	});
-
-	// Default days configuration - memoize to avoid recreating on every render
-	const defaultDays = useMemo<Record<DayKey, TimeEntry>>(
-		() => ({
-			monday: {
-				hours: 0,
-				isDayOff: false,
-				startTime: "09:00",
-				endTime: "17:00",
-				lunchBreakHours: 0.5,
-			},
-			tuesday: {
-				hours: 0,
-				isDayOff: false,
-				startTime: "09:00",
-				endTime: "17:00",
-				lunchBreakHours: 0.5,
-			},
-			wednesday: {
-				hours: 0,
-				isDayOff: false,
-				startTime: "09:00",
-				endTime: "17:00",
-				lunchBreakHours: 0.5,
-			},
-			thursday: {
-				hours: 0,
-				isDayOff: false,
-				startTime: "09:00",
-				endTime: "17:00",
-				lunchBreakHours: 0.5,
-			},
-			friday: {
-				hours: 0,
-				isDayOff: false,
-				startTime: "09:00",
-				endTime: "17:00",
-				lunchBreakHours: 0.5,
-			},
-			saturday: {
-				hours: 0,
-				isDayOff: true,
-				startTime: "09:00",
-				endTime: "17:00",
-				lunchBreakHours: 0.5,
-			},
-			sunday: {
-				hours: 0,
-				isDayOff: true,
-				startTime: "09:00",
-				endTime: "17:00",
-				lunchBreakHours: 0.5,
-			},
-		}),
+	// Create a default TimeEntry with all required fields - memoized to prevent rerenders
+	const createDefaultTimeEntry = useCallback(
+		(existingEntry?: Partial<TimeEntry>): TimeEntry => {
+			return {
+				hours: existingEntry?.hours ?? 0,
+				isDayOff: existingEntry?.isDayOff ?? false,
+				startTime: existingEntry?.startTime ?? "",
+				endTime: existingEntry?.endTime ?? "",
+				lunchBreakHours: existingEntry?.lunchBreakHours ?? 0.5,
+			};
+		},
 		[],
 	);
 
-	// Function to merge initial entries with defaults and apply day settings
-	// Use a more stable dependency array with JSON stringify for objects
-	const mergeEntries = useCallback(() => {
-		console.log("[useWeeklyTimeEntryState] mergeEntries called");
-		// Start with default days
-		const merged = { ...defaultDays };
+	// Helper function to merge initialEntries with defaultDaySettings
+	const mergeEntries = useCallback(
+		(initEntries: Partial<Record<string, Partial<TimeEntry>>>) => {
+			const result: Record<string, TimeEntry> = {};
 
-		// Apply default settings first
-		for (const [day, settings] of Object.entries(defaultDaySettings)) {
-			if (day in merged) {
+			// First initialize all days with default settings
+			for (const [day, settings] of Object.entries(defaultDaySettings)) {
 				const dayKey = day as DayKey;
-				merged[dayKey].startTime =
-					settings.defaultStartTime || merged[dayKey].startTime;
-				merged[dayKey].endTime =
-					settings.defaultEndTime || merged[dayKey].endTime;
+				const startTime = settings.defaultStartTime;
+				const endTime = settings.defaultEndTime;
+				const lunchBreakHours = 0.5; // Default lunch break
 
+				// Pre-calculate hours
 				const calculatedHours = calculateHours(
-					merged[dayKey].startTime,
-					merged[dayKey].endTime,
-					merged[dayKey].lunchBreakHours,
+					startTime,
+					endTime,
+					lunchBreakHours,
 				);
 
-				console.log(
-					`[useWeeklyTimeEntryState] Applied default settings for ${dayKey}:`,
-					{
-						startTime: merged[dayKey].startTime,
-						endTime: merged[dayKey].endTime,
-						lunchBreakHours: merged[dayKey].lunchBreakHours,
-						calculatedHours,
-					},
-				);
-
-				merged[dayKey].hours = calculatedHours;
-			}
-		}
-
-		// Process initial entries and merge them
-		for (const [day, entry] of Object.entries(initialEntries)) {
-			if (entry && day in defaultDays) {
-				// Safe to cast since we've checked day is in defaultDays
-				const dayKey = day as DayKey;
-				const defaultEntry = merged[dayKey];
-
-				console.log(
-					`[useWeeklyTimeEntryState] Processing initialEntry for ${dayKey}:`,
-					entry,
-				);
-
-				merged[dayKey] = {
-					hours:
-						typeof entry.hours === "number" ? entry.hours : defaultEntry.hours,
-					isDayOff:
-						typeof entry.isDayOff === "boolean"
-							? entry.isDayOff
-							: defaultEntry.isDayOff,
-					startTime: entry.startTime || defaultEntry.startTime,
-					endTime: entry.endTime || defaultEntry.endTime,
-					lunchBreakHours:
-						entry.lunchBreakHours || defaultEntry.lunchBreakHours,
+				// Apply default settings for the day
+				result[dayKey] = {
+					hours: calculatedHours,
+					isDayOff: false,
+					startTime,
+					endTime,
+					lunchBreakHours,
 				};
-
-				console.log(
-					`[useWeeklyTimeEntryState] Merged entry for ${dayKey}:`,
-					merged[dayKey],
-				);
 			}
-		}
 
-		console.log("[useWeeklyTimeEntryState] Final merged entries:", merged);
-		return merged;
-	}, [defaultDays, defaultDaySettings, initialEntries, calculateHours]);
+			// Override with any initial entries that were passed in
+			const hasInitialEntries = Object.keys(initEntries).length > 0;
+			if (hasInitialEntries) {
+				for (const [day, entry] of Object.entries(initEntries)) {
+					if (!entry) continue;
+					if (!result[day]) continue;
 
-	const [timeEntries, setTimeEntries] = useState<Record<string, TimeEntry>>(
-		() => {
-			const initial = mergeEntries();
-			console.log("[useWeeklyTimeEntryState] Initial state set:", initial);
-			return initial;
+					// Merge the initial entry with the defaults
+					result[day] = {
+						...result[day],
+						...entry,
+						// Ensure all required properties are defined
+						hours: entry.hours ?? result[day].hours,
+						isDayOff: entry.isDayOff ?? result[day].isDayOff,
+						startTime: entry.startTime ?? result[day].startTime,
+						endTime: entry.endTime ?? result[day].endTime,
+						lunchBreakHours:
+							entry.lunchBreakHours ?? result[day].lunchBreakHours,
+					};
+				}
+			}
+
+			return result;
 		},
+		[defaultDaySettings, calculateHours],
 	);
 
-	// Track changes for onTimeEntryChange callback
-	const [changedEntry, setChangedEntry] = useState<{
-		entries: Record<string, TimeEntry>;
-		day?: string;
-	} | null>(null);
+	// State to store the time entries
+	const [timeEntries, setTimeEntries] = useState(() =>
+		mergeEntries(initialEntries),
+	);
 
-	// Update timeEntries only when inputs meaningfully change
-	// We'll use a ref to track if this is the first render to avoid unnecessary updates
+	// Recalculate entries when initialEntries change
 	useEffect(() => {
-		console.log(
-			"[useWeeklyTimeEntryState] Dependencies changed, recalculating merged entries",
-		);
-		// Only update when initialEntries or defaultDaySettings change
-		const newEntries = mergeEntries();
-		console.log(
-			"[useWeeklyTimeEntryState] Setting new entries from dependencies:",
-			newEntries,
-		);
+		// Merge entries with new settings
+		const newEntries = mergeEntries(initialEntries);
 		setTimeEntries(newEntries);
-	}, [mergeEntries]);
+	}, [initialEntries, mergeEntries]);
 
-	// Handle onTimeEntryChange in a separate effect
-	useEffect(() => {
-		if (changedEntry && onTimeEntryChange) {
-			console.log(
-				"[useWeeklyTimeEntryState] Calling onTimeEntryChange with:",
-				changedEntry,
-			);
-			onTimeEntryChange(changedEntry.entries, changedEntry.day);
-			setChangedEntry(null);
-		}
-	}, [changedEntry, onTimeEntryChange]);
+	// Calculate total hours
+	const totalHours = useMemo(() => {
+		return Object.values(timeEntries).reduce(
+			(total, entry) => total + (entry.isDayOff ? 0 : entry.hours),
+			0,
+		);
+	}, [timeEntries]);
 
-	// Handlers for time entry changes
+	// Handle time change for a specific day
 	const handleTimeChange = useCallback(
 		(day: string, field: "startTime" | "endTime", value: string) => {
-			console.log(
-				`[useWeeklyTimeEntryState] handleTimeChange: ${day}.${field} = ${value}`,
-			);
+			setTimeEntries((prev) => {
+				const entry = prev[day] || createDefaultTimeEntry();
 
-			setTimeEntries((prevEntries) => {
-				const newEntries = { ...prevEntries };
+				// Update the entry
+				const updatedEntry: TimeEntry = {
+					...entry,
+					[field]: value,
+				};
 
-				if (newEntries[day]) {
-					const currentEntry = newEntries[day];
-					const updatedEntry: TimeEntry = {
-						hours: currentEntry.hours,
-						isDayOff: currentEntry.isDayOff,
-						startTime: currentEntry.startTime,
-						endTime: currentEntry.endTime,
-						lunchBreakHours: currentEntry.lunchBreakHours,
-						...{ [field]: value },
-					};
-
-					// Recalculate hours based on start time, end time and lunch break
+				// Recalculate hours if we have both start and end time
+				if (updatedEntry.startTime && updatedEntry.endTime) {
 					updatedEntry.hours = calculateHours(
 						updatedEntry.startTime,
 						updatedEntry.endTime,
 						updatedEntry.lunchBreakHours,
 					);
-
-					console.log(
-						`[useWeeklyTimeEntryState] Recalculated hours for ${day}:`,
-						{
-							before: currentEntry.hours,
-							after: updatedEntry.hours,
-							startTime: updatedEntry.startTime,
-							endTime: updatedEntry.endTime,
-							lunchBreakHours: updatedEntry.lunchBreakHours,
-						},
-					);
-
-					newEntries[day] = updatedEntry;
 				}
 
-				// Moved to useEffect
-				setChangedEntry({ entries: newEntries, day });
-				return newEntries;
+				const result: Record<string, TimeEntry> = {
+					...prev,
+					[day]: updatedEntry,
+				};
+
+				// Notify parent about the change
+				onTimeEntryChange?.(result, day);
+
+				return result;
 			});
 		},
-		[calculateHours],
+		[calculateHours, onTimeEntryChange, createDefaultTimeEntry],
 	);
 
+	// Handle lunch break change for a specific day
 	const handleLunchBreakChange = useCallback(
-		(day: string, value: string) => {
-			setTimeEntries((prevEntries) => {
-				const newEntries = { ...prevEntries };
-				const lunchBreakHours = Number.parseFloat(value) || 0;
+		(day: string, value: number) => {
+			setTimeEntries((prev) => {
+				const entry = prev[day] || createDefaultTimeEntry();
 
-				if (newEntries[day]) {
-					const currentEntry = newEntries[day];
-					const updatedEntry: TimeEntry = {
-						hours: currentEntry.hours,
-						isDayOff: currentEntry.isDayOff,
-						startTime: currentEntry.startTime,
-						endTime: currentEntry.endTime,
-						lunchBreakHours: lunchBreakHours,
-					};
+				// Update the entry
+				const updatedEntry: TimeEntry = {
+					...entry,
+					lunchBreakHours: value,
+				};
 
-					// Recalculate hours
+				// Recalculate hours if we have both start and end time
+				if (updatedEntry.startTime && updatedEntry.endTime) {
 					updatedEntry.hours = calculateHours(
 						updatedEntry.startTime,
 						updatedEntry.endTime,
 						updatedEntry.lunchBreakHours,
 					);
-
-					newEntries[day] = updatedEntry;
 				}
 
-				// Moved to useEffect
-				setChangedEntry({ entries: newEntries, day });
-				return newEntries;
+				const result: Record<string, TimeEntry> = {
+					...prev,
+					[day]: updatedEntry,
+				};
+
+				// Notify parent about the change
+				onTimeEntryChange?.(result, day);
+
+				return result;
 			});
 		},
-		[calculateHours],
+		[calculateHours, onTimeEntryChange, createDefaultTimeEntry],
 	);
 
-	const handleDayOffToggle = useCallback((day: string, isDayOff: boolean) => {
-		setTimeEntries((prevEntries) => {
-			const newEntries = { ...prevEntries };
+	// Handle day off toggle for a specific day
+	const handleDayOffToggle = useCallback(
+		(day: string, isDayOff: boolean) => {
+			setTimeEntries((prev) => {
+				const entry = prev[day] || createDefaultTimeEntry();
 
-			// Ensure we have a valid entry for this day before updating
-			if (prevEntries[day]) {
-				newEntries[day] = {
-					...prevEntries[day],
+				// Update the entry
+				const updatedEntry: TimeEntry = {
+					...entry,
 					isDayOff,
-					// If marking as day off, reset hours to 0
-					hours: isDayOff ? 0 : prevEntries[day].hours,
+				};
+
+				const result: Record<string, TimeEntry> = {
+					...prev,
+					[day]: updatedEntry,
+				};
+
+				// Notify parent about the change
+				onTimeEntryChange?.(result, day);
+
+				return result;
+			});
+		},
+		[onTimeEntryChange, createDefaultTimeEntry],
+	);
+
+	/**
+	 * Apply default hours to days based on settings
+	 */
+	const applyDefaultHours = useCallback(() => {
+		setTimeEntries((prev) => {
+			const newEntries: Record<string, TimeEntry> = { ...prev };
+
+			for (const [day, settings] of Object.entries(defaultDaySettings)) {
+				// Skip day if it's marked as a day off
+				if (newEntries[day]?.isDayOff) continue;
+
+				// Apply default time settings
+				const startTime = settings.defaultStartTime;
+				const endTime = settings.defaultEndTime;
+				const lunchBreakHours = newEntries[day]?.lunchBreakHours ?? 0.5;
+
+				// Calculate hours
+				const hours = calculateHours(startTime, endTime, lunchBreakHours);
+
+				// Update entry
+				newEntries[day] = {
+					...(newEntries[day] || createDefaultTimeEntry()),
+					startTime,
+					endTime,
+					hours,
+					isDayOff: false,
+					lunchBreakHours,
 				};
 			}
 
-			// Moved to useEffect
-			setChangedEntry({ entries: newEntries, day });
+			// Notify parent about the change
+			onTimeEntryChange?.(newEntries);
+
 			return newEntries;
 		});
-	}, []);
+	}, [
+		defaultDaySettings,
+		calculateHours,
+		onTimeEntryChange,
+		createDefaultTimeEntry,
+	]);
 
-	// Apply default hours for all workdays based on settings
-	const applyDefaultHours = useCallback(() => {
-		setTimeEntries((prevEntries) => {
-			const newEntries = { ...prevEntries };
-
-			for (const dayKey of Object.keys(defaultDays) as DayKey[]) {
-				// Skip days off
-				if (newEntries[dayKey]?.isDayOff) {
-					continue;
-				}
-
-				// Use day-specific default settings if available
-				const daySetting = defaultDaySettings[dayKey];
-				if (daySetting && newEntries[dayKey]) {
-					const currentEntry = newEntries[dayKey];
-					newEntries[dayKey] = {
-						...currentEntry,
-						startTime: daySetting.defaultStartTime || currentEntry.startTime,
-						endTime: daySetting.defaultEndTime || currentEntry.endTime,
-						isDayOff: currentEntry.isDayOff,
-					};
-
-					// Recalculate hours
-					if (newEntries[dayKey]) {
-						newEntries[dayKey].hours = calculateHours(
-							newEntries[dayKey].startTime,
-							newEntries[dayKey].endTime,
-							newEntries[dayKey].lunchBreakHours,
-						);
-					}
-				}
-			}
-
-			// Moved to useEffect
-			setChangedEntry({ entries: newEntries });
-			return newEntries;
-		});
-	}, [calculateHours, defaultDays, defaultDaySettings]);
-
-	// Fill hours to meet target hours
+	/**
+	 * Calculate hours needed to reach the target and add them to the last working day
+	 */
 	const fillTargetHours = useCallback(() => {
-		setTimeEntries((prevEntries) => {
-			// Calculate current total hours
-			const currentTotal = Object.values(prevEntries).reduce(
-				(sum, entry) => (entry.isDayOff ? sum : sum + entry.hours),
+		setTimeEntries((prev) => {
+			const newEntries: Record<string, TimeEntry> = { ...prev };
+			const currentTotal = Object.values(newEntries).reduce(
+				(total, entry) => total + (entry.isDayOff ? 0 : entry.hours),
 				0,
 			);
 
-			// If we already met or exceeded target, no need to adjust
+			// If we've already reached the target, no need to adjust
 			if (currentTotal >= targetHours) {
-				return prevEntries;
+				return prev;
 			}
 
-			// Calculate remaining hours needed
-			const remainingHours = targetHours - currentTotal;
+			// Find working days (not marked as day off)
+			const workDays = Object.entries(newEntries)
+				.filter(([, entry]) => !entry.isDayOff)
+				.map(([day]) => day);
 
-			// Count how many workdays we have
-			const workdayCount = Object.values(prevEntries).filter(
-				(entry) => !entry.isDayOff,
-			).length;
-
-			if (workdayCount === 0) {
-				return prevEntries; // No workdays to distribute hours to
+			if (workDays.length === 0) {
+				return prev; // No working days to adjust
 			}
 
-			// Distribute remaining hours evenly among workdays
-			const hoursPerDay = remainingHours / workdayCount;
-			const newEntries = { ...prevEntries };
+			// Sort work days to ensure we adjust the last working day
+			const orderedDays = [
+				"monday",
+				"tuesday",
+				"wednesday",
+				"thursday",
+				"friday",
+				"saturday",
+				"sunday",
+			].filter((day) => workDays.includes(day));
 
-			// For each workday, adjust end time to add the required hours
-			for (const [day, entry] of Object.entries(newEntries)) {
-				if (entry.isDayOff) continue;
+			// Get the last working day
+			const lastWorkDay = orderedDays[orderedDays.length - 1];
+			if (!lastWorkDay) return prev;
 
-				// Calculate new end time by adding hoursPerDay
-				const startParts = entry.startTime.split(":").map(Number);
-				const startHour = startParts[0] || 0;
-				const startMinute = startParts[1] || 0;
+			// Calculate how many hours we need to add
+			const hoursToAdd = targetHours - currentTotal;
+			const entry = newEntries[lastWorkDay];
 
-				// Convert start time to minutes, add work time and lunch break
-				const startTimeInMinutes = startHour * 60 + startMinute;
-				const workTimeInMinutes = (entry.hours + hoursPerDay) * 60;
-				const lunchBreakInMinutes = entry.lunchBreakHours * 60;
+			if (!entry) return prev;
 
-				// Calculate new end time in minutes
-				const endTimeInMinutes =
-					startTimeInMinutes + workTimeInMinutes + lunchBreakInMinutes;
+			// Add the hours to the last working day
+			newEntries[lastWorkDay] = {
+				...entry,
+				hours: entry.hours + hoursToAdd,
+			};
 
-				// Convert back to hours and minutes
-				const endHours = Math.floor(endTimeInMinutes / 60);
-				const endMinutes = Math.round(endTimeInMinutes % 60);
+			// Notify parent about the change
+			onTimeEntryChange?.(newEntries, lastWorkDay);
 
-				// Format as HH:MM
-				const newEndTime = `${endHours.toString().padStart(2, "0")}:${endMinutes
-					.toString()
-					.padStart(2, "0")}`;
-
-				// Update the entry
-				entry.endTime = newEndTime;
-				entry.hours = calculateHours(
-					entry.startTime,
-					entry.endTime,
-					entry.lunchBreakHours,
-				);
-			}
-
-			// Moved to useEffect
-			setChangedEntry({ entries: newEntries });
 			return newEntries;
 		});
-	}, [calculateHours, targetHours]);
-
-	// Calculate total hours - memoize to avoid recalculation on every render
-	const totalHours = useMemo(
-		() =>
-			Object.values(timeEntries).reduce((sum, entry) => sum + entry.hours, 0),
-		[timeEntries],
-	);
+	}, [targetHours, onTimeEntryChange]);
 
 	return {
 		timeEntries,

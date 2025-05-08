@@ -23,22 +23,9 @@ export function useTimeEntries(settings: TimeSettings) {
 	// Reference to track local changes across renders
 	const hasLocalChangesRef = useRef(false);
 
-	console.log("[useTimeEntries] Initial state:", {
-		hasLocalChanges,
-		currentWeek: !!currentWeek,
-	});
-
 	// Update time entries when current week data changes
 	useEffect(() => {
-		console.log("[useTimeEntries] Effect triggered:", {
-			hasCurrentWeek: !!currentWeek,
-			hasLocalChanges,
-			hasLocalChangesRef: hasLocalChangesRef.current,
-			workDaysCount: currentWeek?.workDays?.length,
-		});
-
 		if (currentWeek && !hasLocalChangesRef.current) {
-			console.log("[useTimeEntries] Loading data from server");
 			// Convert current week data to time entries format
 			const entries: Record<string, TimeEntry> = {};
 			for (const day of currentWeek.workDays) {
@@ -57,18 +44,13 @@ export function useTimeEntries(settings: TimeSettings) {
 					lunchBreakHours:
 						(day.lunchBreakMinutes || settings.breakDuration) / 60, // Convert from minutes to hours
 				};
-				console.log(
-					`[useTimeEntries] Day ${dayName} from server:`,
-					entries[dayName],
-				);
 			}
-			console.log("[useTimeEntries] Setting entries from server:", entries);
 			setTimeEntries(entries);
 			setInitialDataLoaded(true);
 		} else if (currentWeek && hasLocalChangesRef.current) {
-			console.log("[useTimeEntries] Skipping server data due to local changes");
+			// Skip loading server data to avoid overwriting local changes
 		}
-	}, [currentWeek, hasLocalChanges, settings.breakDuration]);
+	}, [currentWeek, settings.breakDuration]);
 
 	/**
 	 * Updates time entries and syncs with the database
@@ -77,21 +59,13 @@ export function useTimeEntries(settings: TimeSettings) {
 		entries: Record<string, TimeEntry>,
 		changedDay?: string,
 	) => {
-		console.log("[useTimeEntries] handleTimeEntryChange called:", {
-			entries,
-			changedDay,
-			hasCurrentWeek: !!currentWeek,
-		});
-
 		// Mark that we have local changes to prevent server data from overwriting
 		setHasLocalChanges(true);
 		hasLocalChangesRef.current = true;
-		console.log("[useTimeEntries] hasLocalChanges set to true");
 
 		setTimeEntries(entries);
 
 		if (!currentWeek) {
-			console.log("[useTimeEntries] No current week, creating new week");
 			const now = new Date();
 			const weekNumber = getWeekNumber(now);
 			const year = now.getFullYear();
@@ -107,11 +81,6 @@ export function useTimeEntries(settings: TimeSettings) {
 				// If it's a new week, we need to create all days
 				const daysToUpdate = changedDay ? [changedDay] : Object.keys(entries);
 				const weekId = week[0].id;
-
-				console.log(
-					"[useTimeEntries] Created new week, updating days:",
-					daysToUpdate,
-				);
 
 				for (const day of daysToUpdate) {
 					if (!entries[day]) continue; // Skip if entry doesn't exist
@@ -133,15 +102,6 @@ export function useTimeEntries(settings: TimeSettings) {
 						(entries[day].lunchBreakHours || 0.5) * 60,
 					);
 
-					console.log(`[useTimeEntries] Updating day ${day}:`, {
-						hours: entries[day].hours,
-						totalMinutes,
-						lunchBreakHours: entries[day].lunchBreakHours,
-						lunchBreakMinutes,
-						startTime,
-						endTime,
-					});
-
 					await updateDayInWeek({
 						weekId: weekId,
 						date,
@@ -156,10 +116,6 @@ export function useTimeEntries(settings: TimeSettings) {
 		} else {
 			// Only update the changed day if specified
 			const daysToUpdate = changedDay ? [changedDay] : Object.keys(entries);
-			console.log(
-				"[useTimeEntries] Updating existing week, days:",
-				daysToUpdate,
-			);
 
 			for (const day of daysToUpdate) {
 				if (!entries[day]) continue; // Skip if entry doesn't exist
@@ -191,15 +147,6 @@ export function useTimeEntries(settings: TimeSettings) {
 				const lunchBreakMinutes = Math.round(
 					(entries[day].lunchBreakHours || 0.5) * 60,
 				);
-
-				console.log(`[useTimeEntries] Updating day ${day} in DB:`, {
-					hours: entries[day].hours,
-					totalMinutes,
-					lunchBreakHours: entries[day].lunchBreakHours,
-					lunchBreakMinutes,
-					startTime,
-					endTime,
-				});
 
 				try {
 					await updateDayInWeek({
