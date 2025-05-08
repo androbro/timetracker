@@ -1,7 +1,6 @@
 "use client";
 
-import { Clock, Info, Settings as SettingsIcon } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Clock, Settings as SettingsIcon } from "lucide-react";
 import { Switch } from "~/components/ui/switch";
 import {
 	Tooltip,
@@ -13,7 +12,6 @@ import { useDaySettingsDialog } from "~/lib/hooks/useDaySettingsDialog";
 import { useTimeUtils } from "~/lib/hooks/useTimeUtils";
 import { useWeeklyTimeEntryState } from "~/lib/hooks/useWeeklyTimeEntryState";
 import { cn } from "~/lib/utils";
-import type { DaySettings } from "./Settings";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
@@ -22,12 +20,7 @@ import { Label } from "./ui/label";
 import { DaySettingsDialog } from "./DaySettingsDialog";
 // Import extracted components and utilities
 import { TimeInput } from "./TimeInput";
-import {
-	DAYS,
-	type DayKey,
-	type TimeEntry,
-	type WeeklyTimeEntryProps,
-} from "./types/timeEntryTypes";
+import { DAYS, type WeeklyTimeEntryProps } from "./types/timeEntryTypes";
 
 export function WeeklyTimeEntry({
 	onTimeEntryChange,
@@ -102,17 +95,6 @@ export function WeeklyTimeEntry({
 							>
 								Fill Target Hours
 							</Button>
-							{onOpenSettings && (
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={onOpenSettings}
-									className="flex h-8 items-center gap-1 text-xs"
-								>
-									<SettingsIcon className="h-3 w-3" />
-									Settings
-								</Button>
-							)}
 						</div>
 					</div>
 				</CardHeader>

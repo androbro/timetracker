@@ -43,9 +43,9 @@ export function TimeTracker() {
 						variant="outline"
 						size="sm"
 						onClick={() => setIsSettingsOpen(true)}
-						className="ml-auto h-8"
+						className="flex h-8 items-center gap-1 text-xs"
 					>
-						<SettingsIcon className="mr-2 h-4 w-4" />
+						<SettingsIcon className="h-3 w-3" />
 						Settings
 					</Button>
 				</div>
