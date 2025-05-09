@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Settings as SettingsIcon } from "lucide-react";
+import { Clock, History, Settings as SettingsIcon } from "lucide-react";
 import { useState } from "react";
 import { EarlyDepartureScheduler } from "~/components/EarlyDepartureScheduler";
 import { Settings } from "~/components/Settings";
@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { useSettings } from "~/lib/hooks/useSettings";
 import { useTimeEntries } from "~/lib/hooks/useTimeEntries";
 import { useTimeEntryMapper } from "~/lib/hooks/useTimeEntryMapper";
+import { HistoryView } from "./history-view";
 
 export function TimeTracker() {
 	const { settings, handleSettingsChange, handleDaySettingsChange } =
@@ -37,6 +38,10 @@ export function TimeTracker() {
 						<TabsTrigger value="early-departure" className="gap-2">
 							<Clock className="h-4 w-4" />
 							Early Departure
+						</TabsTrigger>
+						<TabsTrigger value="history" className="gap-2">
+							<History className="h-4 w-4" />
+							History
 						</TabsTrigger>
 					</TabsList>
 					<Button
@@ -74,6 +79,10 @@ export function TimeTracker() {
 						use24HourFormat={settings.use24HourFormat}
 						showWeekends={settings.showWeekends}
 					/>
+				</TabsContent>
+
+				<TabsContent value="history">
+					<HistoryView use24HourFormat={settings.use24HourFormat} />
 				</TabsContent>
 			</Tabs>
 

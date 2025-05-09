@@ -138,8 +138,10 @@ export function useWeeklyTimeEntryState({
 					[day]: updatedEntry,
 				};
 
-				// Notify parent about the change
-				onTimeEntryChange?.(result, day);
+				// Defer parent notification to avoid React state updates during render
+				setTimeout(() => {
+					onTimeEntryChange?.(result, day);
+				}, 0);
 
 				return result;
 			});
@@ -173,8 +175,10 @@ export function useWeeklyTimeEntryState({
 					[day]: updatedEntry,
 				};
 
-				// Notify parent about the change
-				onTimeEntryChange?.(result, day);
+				// Defer parent notification to avoid React state updates during render
+				setTimeout(() => {
+					onTimeEntryChange?.(result, day);
+				}, 0);
 
 				return result;
 			});
@@ -199,8 +203,10 @@ export function useWeeklyTimeEntryState({
 					[day]: updatedEntry,
 				};
 
-				// Notify parent about the change
-				onTimeEntryChange?.(result, day);
+				// Defer parent notification to avoid React state updates during render
+				setTimeout(() => {
+					onTimeEntryChange?.(result, day);
+				}, 0);
 
 				return result;
 			});
@@ -225,8 +231,10 @@ export function useWeeklyTimeEntryState({
 					[day]: updatedEntry,
 				};
 
-				// Notify parent about the change
-				onTimeEntryChange?.(result, day);
+				// Defer parent notification to avoid React state updates during render
+				setTimeout(() => {
+					onTimeEntryChange?.(result, day);
+				}, 0);
 
 				return result;
 			});
@@ -264,8 +272,10 @@ export function useWeeklyTimeEntryState({
 				};
 			}
 
-			// Notify parent about the change
-			onTimeEntryChange?.(newEntries);
+			// Defer parent notification to avoid React state updates during render
+			setTimeout(() => {
+				onTimeEntryChange?.(newEntries);
+			}, 0);
 
 			return newEntries;
 		});
@@ -328,8 +338,10 @@ export function useWeeklyTimeEntryState({
 				hours: entry.hours + hoursToAdd,
 			};
 
-			// Notify parent about the change
-			onTimeEntryChange?.(newEntries, lastWorkDay);
+			// Defer parent notification to avoid React state updates during render
+			setTimeout(() => {
+				onTimeEntryChange?.(newEntries, lastWorkDay);
+			}, 0);
 
 			return newEntries;
 		});

@@ -10,6 +10,7 @@ export interface TimeEntry {
 	startTime?: string;
 	endTime?: string;
 	lunchBreakHours?: number;
+	verified?: boolean;
 }
 
 /**
@@ -43,6 +44,7 @@ export function useTimeEntries(settings: TimeSettings) {
 					endTime: day.endTime,
 					lunchBreakHours:
 						(day.lunchBreakMinutes || settings.breakDuration) / 60, // Convert from minutes to hours
+					verified: day.verified ?? false,
 				};
 			}
 			setTimeEntries(entries);
@@ -110,6 +112,7 @@ export function useTimeEntries(settings: TimeSettings) {
 						totalHours: totalMinutes, // Store as minutes
 						lunchBreakMinutes, // Store lunch break in minutes
 						isDayOff: entries[day].isDayOff,
+						verified: entries[day].verified || false,
 					});
 				}
 			}
@@ -157,6 +160,7 @@ export function useTimeEntries(settings: TimeSettings) {
 						totalHours: totalMinutes, // Store as minutes
 						lunchBreakMinutes, // Store lunch break in minutes
 						isDayOff: entries[day].isDayOff,
+						verified: entries[day].verified || false,
 					});
 				} catch (error) {
 					console.error(`Error updating ${day}:`, error);

@@ -48,6 +48,7 @@ export const workDays = createTable(
 		totalHours: t.integer().notNull(), // in minutes
 		lunchBreakMinutes: t.integer().default(30).notNull(), // Lunch break duration in minutes
 		isDayOff: t.boolean().default(false).notNull(), // Day off (like weekend)
+		verified: t.boolean().default(false).notNull(), // Whether day has been verified/locked
 		createdAt: t
 			.timestamp({ withTimezone: true })
 			.default(sql`CURRENT_TIMESTAMP`)

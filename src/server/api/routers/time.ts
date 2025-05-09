@@ -50,6 +50,7 @@ export const timeRouter = createTRPCRouter({
 				totalHours: z.number(),
 				lunchBreakMinutes: z.number().default(30),
 				isDayOff: z.boolean().default(false),
+				verified: z.boolean().default(false),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -217,6 +218,20 @@ export const timeRouter = createTRPCRouter({
 		}
 
 		return { success: true };
+	}),
+
+	getAllWorkWeeks: publicProcedure.query(async ({ ctx }) => {
+		const weeks = await ctx.db.query.workWeeks.findMany({
+			with: {
+				workDays: true,
+			},
+			orderBy: (workWeeks, { desc }) => [
+				desc(workWeeks.year),
+				desc(workWeeks.weekNumber),
+			],
+		});
+
+		return weeks;
 	}),
 });
 

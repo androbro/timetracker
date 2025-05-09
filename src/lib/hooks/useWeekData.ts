@@ -31,6 +31,7 @@ export function useWeekData() {
 		totalHours: number;
 		lunchBreakMinutes: number;
 		isDayOff: boolean;
+		verified?: boolean;
 	}) => {
 		return await updateDay.mutateAsync(params);
 	};
